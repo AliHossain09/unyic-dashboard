@@ -64,7 +64,7 @@ class ProductController extends Controller
         // =======================================
 
         // paginate and keep query string so filters persist
-        $products = $query->orderBy('name')->paginate($perPage)->withQueryString();
+        $products = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
         return view('admin.product.index', compact('products'));
     }

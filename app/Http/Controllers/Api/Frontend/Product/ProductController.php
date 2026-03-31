@@ -6,10 +6,63 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\Size;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
+    private function normalizeListingKey(?string $key): ?string
+    {
+        $normalized = strtolower(trim((string) $key));
+
+        return match ($normalized) {
+            'department', 'departments' => 'department',
+            'category', 'categories' => 'category',
+            'sub-category', 'sub_category', 'subcategory', 'sub-categories' => 'sub-category',
+            default => null,
+        };
+    }
+
+    private function normalizeSlug(?string $slug): ?string
+    {
+        if ($slug === null) {
+            return null;
+        }
+
+        $slug = trim($slug);
+        $slug = trim($slug, "\"'");
+
+        return $slug === '' ? null : strtolower($slug);
+    }
+
+    private function applyKeyScope(Builder $query, Request $request): void
+    {
+        $key = $this->normalizeListingKey($request->query('key'));
+        $keySlug = $this->normalizeSlug($request->query('keySlug'));
+
+        if (! $key || ! $keySlug) {
+            return;
+        }
+
+        switch ($key) {
+            case 'department':
+                $query->whereHas('category.department', function ($q) use ($keySlug) {
+                    $q->where('slug', $keySlug);
+                });
+                break;
+            case 'category':
+                $query->whereHas('category', function ($q) use ($keySlug) {
+                    $q->where('slug', $keySlug);
+                });
+                break;
+            case 'sub-category':
+                $query->whereHas('subCategory', function ($q) use ($keySlug) {
+                    $q->where('slug', $keySlug);
+                });
+                break;
+        }
+    }
+
     private function discountRules(): array
     {
         return [
@@ -44,7 +97,9 @@ class ProductController extends Controller
         // --------------------------------------------------------------------------
         // Base query (discount only for slider)
         // --------------------------------------------------------------------------
-        $baseQuery = Product::query();
+        $scopedBaseQuery = Product::query();
+        $this->applyKeyScope($scopedBaseQuery, $request);
+        $baseQuery = clone $scopedBaseQuery;
 
         if ($activeDiscount) {
             $baseQuery->whereBetween('discount_percent', $activeDiscount['range']);
@@ -67,7 +122,7 @@ class ProductController extends Controller
         // --------------------------------------------------------------------------
         // Discount counts (always based on all products)
         // --------------------------------------------------------------------------
-        $discountCounts = Product::query()
+        $discountCounts = (clone $scopedBaseQuery)
             ->selectRaw('
             SUM(discount_percent BETWEEN 0 AND 20)   as d1,
             SUM(discount_percent BETWEEN 21 AND 40)  as d2,
@@ -175,7 +230,12 @@ class ProductController extends Controller
             array_pad(explode('-', $request->query('price', '0-999999')), 2, 999999)
         );
 
-        $perPage = (int) $request->query('per_page', 20); // default pagination
+        $limit = (int) $request->query('limit', $request->query('per_page', 50));
+        if ($limit < 1) {
+            $limit = 50;
+        }
+        $useCursorPagination = $request->query('pagination') === 'cursor'
+            || $request->boolean('infinite');
 
         // --------------------------------------------------------------------------
         // Discount resolution
@@ -187,6 +247,7 @@ class ProductController extends Controller
         // Base product query
         // --------------------------------------------------------------------------
         $query = Product::query();
+        $this->applyKeyScope($query, $request);
 
         // Discount filter
         if ($activeDiscount) {
@@ -215,6 +276,8 @@ class ProductController extends Controller
             });
         }
 
+        $total = (clone $query)->count();
+
         // --------------------------------------------------------------------------
         // Sorting
         // --------------------------------------------------------------------------
@@ -222,32 +285,62 @@ class ProductController extends Controller
         switch ($sort) {
             case 'popular':
                 $query->orderBy('views', 'desc');
+                $query->orderBy('id', 'desc');
                 break;
             case 'price_asc':
                 $query->orderBy('price', 'asc');
+                $query->orderBy('id', 'asc');
                 break;
             case 'price_desc':
                 $query->orderBy('price', 'desc');
+                $query->orderBy('id', 'desc');
                 break;
             case 'discount':
                 $query->orderBy('discount_percent', 'desc');
+                $query->orderBy('id', 'desc');
                 break;
             case 'newest':
             default:
                 $query->orderBy('created_at', 'desc');
+                $query->orderBy('id', 'desc');
                 break;
         }
 
         // --------------------------------------------------------------------------
         // Pagination with sizes eager loaded
         // --------------------------------------------------------------------------
-        $products = $query->with('sizes')->paginate($perPage);
+        $query->with(['sizes', 'images']);
+
+        if ($useCursorPagination) {
+            $products = $query->cursorPaginate(
+                $limit,
+                ['*'],
+                'cursor',
+                $request->query('cursor')
+            );
+
+            return response()->json([
+                'data' => [
+                    'products' => ProductResource::collection($products->items()),
+                    'nextCursor' => $products->nextCursor()?->encode(),
+                    'total' => $total,
+                    'limit' => $limit,
+                ],
+            ]);
+        }
+
+        $products = $query->paginate($limit);
 
         // --------------------------------------------------------------------------
         // Response
         // --------------------------------------------------------------------------
         return response()->json([
-            'data' => ProductResource::collection($products->items()),
+            'data' => [
+                'products' => ProductResource::collection($products->items()),
+                'nextCursor' => null,
+                'total' => $products->total(),
+                'limit' => $products->perPage(),
+            ],
         ]);
     }
 }

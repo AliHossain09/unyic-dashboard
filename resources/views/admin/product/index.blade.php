@@ -183,8 +183,12 @@
                             </td>
 
                             <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200 inline-flex">
-                                @if ($product->images->where('is_default', true)->first())
-                                    <img src="{{ asset('storage/' . $product->images->where('is_default', true)->first()->image) }}"
+                                @php
+                                    $defaultImage = $product->images->where('is_default', true)->first() ?? $product->images->first();
+                                    $imageExists = $defaultImage && \Illuminate\Support\Facades\Storage::disk('public')->exists($defaultImage->image);
+                                @endphp
+                                @if ($imageExists)
+                                    <img src="{{ asset('storage/' . $defaultImage->image) }}"
                                          alt="{{ $product->name }}"
                                          class="w-16 h-16 object-cover rounded">
                                 @else
@@ -692,6 +696,5 @@
 </script>
 
 </x-app-layout>
-
 
 

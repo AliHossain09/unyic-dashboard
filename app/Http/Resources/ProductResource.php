@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
@@ -28,11 +29,15 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'name' => $this->name,
             'images' => $this->images->map(function ($image) {
+                if (! $image->image || ! Storage::disk('public')->exists($image->image)) {
+                    return null;
+                }
+
                 return [
                     'url' => $image->image ? asset('storage/'.$image->image) : null,
                     'isDefault' => (int) $image->is_default,
                 ];
-            })->toArray(),
+            })->filter()->values()->toArray(),
             'sizes' => $this->sizes->map(function ($size) {
                 return [
                     'size' => $size->name,

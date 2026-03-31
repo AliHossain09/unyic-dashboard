@@ -171,7 +171,7 @@ Route::prefix('frontend/products')->group(function () {
     Route::get('/new-arrivals', [FrontendProductController::class, 'newArrivals']);
     Route::get('/most-viewed', [FrontendProductController::class, 'mostViewed']);
 
-    // ✅ FILTER ROUTE
+    //  FILTER ROUTE
     Route::get('/', [FrontendProductController::class, 'getFilteredProducts']);
     Route::get('/filters', [FrontendProductController::class, 'getFilters']);
 });

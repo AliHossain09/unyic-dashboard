@@ -123,9 +123,16 @@
                 <div class="md:col-span-2">
                     <label class="block font-medium">Existing Images</label>
                     <div class="flex space-x-2 mb-2">
-                        @foreach($product->images as $img)
+                        @php
+                            $existingImages = $product->images->filter(
+                                fn ($img) => \Illuminate\Support\Facades\Storage::disk('public')->exists($img->image)
+                            );
+                        @endphp
+                        @forelse($existingImages as $img)
                             <img src="{{ asset('storage/'.$img->image) }}" class="w-20 h-20 object-cover rounded border">
-                        @endforeach
+                        @empty
+                            <span class="text-gray-400 italic">No Image</span>
+                        @endforelse
                     </div>
                 </div>
 

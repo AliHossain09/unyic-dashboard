@@ -1,7 +1,13 @@
 <x-app-layout>
+    @php
+        $existingImages = $product->images->filter(
+            fn ($img) => \Illuminate\Support\Facades\Storage::disk('public')->exists($img->image)
+        );
+        $defaultImage = $existingImages->firstWhere('is_default', true)?->image ?? $existingImages->first()?->image ?? '';
+    @endphp
     <div
         x-data="{
-            currentImage: '{{ $product->images->firstWhere('is_default', true)?->image ?? $product->images->first()?->image ?? '' }}'
+            currentImage: '{{ $defaultImage }}'
         }"
         class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
     >
@@ -29,9 +35,9 @@
                 </div>
 
                 <!-- Thumbnail Gallery -->
-                @if($product->images->count() > 1)
+                @if($existingImages->count() > 1)
                     <div class="flex gap-3 mt-4 overflow-x-auto">
-                        @foreach($product->images as $image)
+                        @foreach($existingImages as $image)
                             <img
                                 src="{{ asset('storage/' . $image->image) }}"
                                 alt="Thumbnail"
