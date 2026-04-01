@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\Size;
+use App\Support\FrontendProductCache;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -113,6 +114,7 @@ class ProductController extends Controller
             'discount_percent' => $validated['discount_percent'],
 
         ]);
+        FrontendProductCache::bump();
 
         return response()->json([
             'message' => 'Product updated successfully',
@@ -124,6 +126,7 @@ class ProductController extends Controller
     {
         $product = Product::findOrFail($id);
         $product->delete();
+        FrontendProductCache::bump();
 
         return response()->json([
             'message' => 'Product deleted successfully',

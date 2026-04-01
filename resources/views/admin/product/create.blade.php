@@ -100,6 +100,22 @@
                     </select>
                 </div>
 
+                <!-- Status -->
+                <div>
+                    <label class="block font-medium">Status</label>
+                    <select name="status" id="status" class="border rounded w-full p-2">
+                        <option value="publish" @selected(old('status', 'publish') === 'publish')>Publish</option>
+                        <option value="scheduled" @selected(old('status') === 'scheduled')>Scheduled</option>
+                        <option value="inactive" @selected(old('status') === 'inactive')>Inactive</option>
+                    </select>
+                </div>
+
+                <!-- Publish At -->
+                <div id="publishAtWrap">
+                    <label class="block font-medium">Publish At</label>
+                    <input type="datetime-local" name="publish_at" id="publish_at" value="{{ old('publish_at') }}" class="border rounded w-full p-2">
+                </div>
+
                 <!-- Description Date -->
                 <div>
                     <label class="block font-medium">Description</label>
@@ -164,7 +180,12 @@
     <script>
         let categories = @json($categories);
 
-        document.getElementById('category').addEventListener('change', function () {
+        const categoryEl = document.getElementById('category');
+        const statusEl = document.getElementById('status');
+        const publishAtWrapEl = document.getElementById('publishAtWrap');
+        const publishAtInputEl = document.getElementById('publish_at');
+
+        categoryEl.addEventListener('change', function () {
             let catId = this.value;
             let subSelect = document.getElementById('subcategory');
             subSelect.innerHTML = '<option value="">Select SubCategory</option>';
@@ -176,8 +197,19 @@
                 });
             }
         });
+
+        function togglePublishAt() {
+            if (!statusEl || !publishAtWrapEl || !publishAtInputEl) return;
+            const scheduled = statusEl.value === 'scheduled';
+            publishAtWrapEl.style.display = scheduled ? 'block' : 'none';
+            publishAtInputEl.required = scheduled;
+        }
+
+        if (statusEl) {
+            statusEl.addEventListener('change', togglePublishAt);
+            togglePublishAt();
+        }
     </script>
 </x-app-layout>
 
 <!--  -->
-

@@ -113,6 +113,38 @@
                     </select>
                 </div>
 
+                <!-- Status -->
+                <div>
+                    <label class="block font-medium">Status</label>
+                    @php
+                        $statusValue = old('status');
+                        if ($statusValue === null) {
+                            if (($product->publish_at ?? null) && \Illuminate\Support\Carbon::parse($product->publish_at)->isFuture()) {
+                                $statusValue = 'scheduled';
+                            } else {
+                                $statusValue = (isset($product->is_published) && $product->is_published) ? 'publish' : 'inactive';
+                            }
+                        }
+                    @endphp
+                    <select name="status" id="status" class="border rounded w-full p-2">
+                        <option value="publish" @selected($statusValue === 'publish')>Publish</option>
+                        <option value="scheduled" @selected($statusValue === 'scheduled')>Scheduled</option>
+                        <option value="inactive" @selected($statusValue === 'inactive')>Inactive</option>
+                    </select>
+                </div>
+
+                <!-- Publish At -->
+                <div id="publishAtWrap">
+                    <label class="block font-medium">Publish At</label>
+                    <input
+                        type="datetime-local"
+                        name="publish_at"
+                        id="publish_at"
+                        value="{{ old('publish_at', optional($product->publish_at)->format('Y-m-d\TH:i')) }}"
+                        class="border rounded w-full p-2"
+                    >
+                </div>
+
                 <!-- Description -->
                 <div>
                     <label class="block font-medium">Description</label>
@@ -180,6 +212,9 @@
     <script>
         let categories = @json($categories);
         const oldSubId = "{{ old('sub_category_id', $product->sub_category_id) }}";
+        const statusEl = document.getElementById('status');
+        const publishAtWrapEl = document.getElementById('publishAtWrap');
+        const publishAtInputEl = document.getElementById('publish_at');
 
         document.getElementById('category').addEventListener('change', function () {
             let catId = this.value;
@@ -197,5 +232,17 @@
 
         // Trigger change to populate old subcategory
         document.getElementById('category').dispatchEvent(new Event('change'));
+
+        function togglePublishAt() {
+            if (!statusEl || !publishAtWrapEl || !publishAtInputEl) return;
+            const scheduled = statusEl.value === 'scheduled';
+            publishAtWrapEl.style.display = scheduled ? 'block' : 'none';
+            publishAtInputEl.required = scheduled;
+        }
+
+        if (statusEl) {
+            statusEl.addEventListener('change', togglePublishAt);
+            togglePublishAt();
+        }
     </script>
 </x-app-layout>

@@ -8,22 +8,91 @@ use App\Models\Collection;
 use App\Models\Product;
 use App\Models\Size;
 use App\Models\SubCategory;
+use App\Support\FrontendProductCache;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    private function resolveStatusPayload(Request $request, bool $hasIsPublishedColumn, bool $hasPublishAtColumn): array
+    {
+        $status = strtolower((string) $request->input('status', 'publish'));
+        $publishAt = $request->input('publish_at');
+
+        $payload = [];
+
+        if ($hasIsPublishedColumn) {
+            $payload['is_published'] = $status === 'publish';
+        }
+
+        if ($hasPublishAtColumn) {
+            $payload['publish_at'] = $status === 'scheduled' ? ($publishAt ?: null) : null;
+        }
+
+        return $payload;
+    }
+
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $categoryId = $request->input('category');
+        $stock = $request->input('stock');
+        $status = strtolower((string) $request->input('status', ''));
         $perPage = (int) $request->input('perPage', 10); // default 10 per page
+        $hasStockColumn = Schema::hasColumn('products', 'is_in_stock');
+        $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
+        $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
 
         // build query and eager load relations (including images if you use them)
         $query = Product::with(['category', 'subCategory', 'images']);
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        if ($stock === 'in_stock') {
+            if ($hasStockColumn) {
+                $query->where('is_in_stock', true);
+            } else {
+                $query->where('net_quantity', '>', 0);
+            }
+        } elseif ($stock === 'out_of_stock') {
+            if ($hasStockColumn) {
+                $query->where('is_in_stock', false);
+            } else {
+                $query->where(function ($q) {
+                    $q->where('net_quantity', '=', 0)->orWhereNull('net_quantity');
+                });
+            }
+        }
+
+        if ($status === 'publish') {
+            if ($hasIsPublishedColumn) {
+                $query->where('is_published', true);
+            } else {
+                $query->where(function ($q) {
+                    $q->where('is_popular', true)->orWhere('is_new', true);
+                });
+            }
+        } elseif ($status === 'inactive') {
+            if ($hasIsPublishedColumn) {
+                $query->where('is_published', false);
+            } else {
+                $query->where('is_popular', false)->where('is_new', false);
+            }
+        } elseif ($status === 'scheduled') {
+            if ($hasPublishAtColumn) {
+                $query->where('publish_at', '>', now());
+            } else {
+                // No schedule field in DB yet, return empty until schema supports it.
+                $query->whereRaw('1 = 0');
+            }
         }
 
         // ============ EXPORT LOGIC ============
@@ -66,7 +135,37 @@ class ProductController extends Controller
         // paginate and keep query string so filters persist
         $products = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
 
-        return view('admin.product.index', compact('products'));
+        $categories = Category::all();
+
+        return view('admin.product.index', compact('products', 'categories', 'hasStockColumn'));
+    }
+
+    public function updateStock(Request $request, Product $product)
+    {
+        if (! Schema::hasColumn('products', 'is_in_stock')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stock column not found. Please run migrations.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'is_in_stock' => ['required', 'boolean'],
+        ]);
+
+        $product->update([
+            'is_in_stock' => (bool) $validated['is_in_stock'],
+        ]);
+        FrontendProductCache::bump();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock status updated successfully.',
+            'data' => [
+                'id' => $product->id,
+                'is_in_stock' => (bool) $product->is_in_stock,
+            ],
+        ]);
     }
 
     // department_id
@@ -76,8 +175,10 @@ class ProductController extends Controller
         $subCategories = SubCategory::all();
         $sizes = Size::all();
         $collections = Collection::all(); // <-- send collections to view
+        $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
+        $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
 
-        return view('admin.product.create', compact('categories', 'sizes', 'collections', 'subCategories'));
+        return view('admin.product.create', compact('categories', 'sizes', 'collections', 'subCategories', 'hasIsPublishedColumn', 'hasPublishAtColumn'));
     }
 
     public function store(Request $request)
@@ -103,6 +204,8 @@ class ProductController extends Controller
             'countryOfOrigin' => 'nullable',
             'manufactureDate' => 'nullable',
             'netQuantity' => 'nullable',
+            'status' => 'nullable|in:publish,scheduled,inactive',
+            'publish_at' => 'nullable|date',
         ]);
 
         $slug = Str::slug($validated['name']);
@@ -110,7 +213,10 @@ class ProductController extends Controller
         $slug = $count ? "{$slug}-{$count}" : $slug;
 
         // Product তৈরি
-        $product = Product::create([
+        $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
+        $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
+
+        $productData = [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
@@ -130,7 +236,11 @@ class ProductController extends Controller
             'discount_percent' => $validated['discount_percent'] ?? null,
 
             'slug' => $slug,
-        ]);
+        ];
+
+        $productData = array_merge($productData, $this->resolveStatusPayload($request, $hasIsPublishedColumn, $hasPublishAtColumn));
+
+        $product = Product::create($productData);
 
         // // সাইজ attach
         // foreach ($validated['sizes'] as $sizeId => $qty) {
@@ -166,6 +276,7 @@ class ProductController extends Controller
                 ]);
             }
         }
+        FrontendProductCache::bump();
 
         return redirect()->route('products.index')->with('success', 'Product created successfully with sizes!');
     }
@@ -183,11 +294,13 @@ class ProductController extends Controller
         $categories = Category::with('subCategories')->get();
         $sizes = Size::all();
         $collections = Collection::all();
+        $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
+        $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
 
         // load relations needed in the form (images, sizes, collections, subCategory)
         $product->load(['images', 'sizes', 'collections', 'subCategory']);
 
-        return view('admin.product.edit', compact('product', 'categories', 'sizes', 'collections'));
+        return view('admin.product.edit', compact('product', 'categories', 'sizes', 'collections', 'hasIsPublishedColumn', 'hasPublishAtColumn'));
     }
 
     // Update Product
@@ -214,10 +327,12 @@ class ProductController extends Controller
             'countryOfOrigin' => 'nullable',
             'manufactureDate' => 'nullable',
             'netQuantity' => 'nullable',
+            'status' => 'nullable|in:publish,scheduled,inactive',
+            'publish_at' => 'nullable|date',
         ]);
 
         // Update product fields
-        $product->update([
+        $updateData = [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'price' => $validated['price'],
@@ -235,7 +350,13 @@ class ProductController extends Controller
             'old_price' => $validated['old_price'] ?? null,
             'brand' => $validated['brand'] ?? null,
             'discount_percent' => $validated['discount_percent'] ?? null,
-        ]);
+        ];
+
+        $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
+        $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
+        $updateData = array_merge($updateData, $this->resolveStatusPayload($request, $hasIsPublishedColumn, $hasPublishAtColumn));
+
+        $product->update($updateData);
 
         // Sync sizes with quantity
         $sizeData = [];
@@ -271,6 +392,7 @@ class ProductController extends Controller
                 ]);
             }
         }
+        FrontendProductCache::bump();
 
         return redirect()->route('products.index')->with('success', 'Product updated successfully!');
     }
@@ -279,6 +401,7 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $product->delete();
+        FrontendProductCache::bump();
 
         return redirect()->back()->with('success', 'Product deleted successfully!');
     }

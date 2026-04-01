@@ -289,6 +289,7 @@ Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index'])->name('products.index'); // List product
     Route::get('/create', [ProductController::class, 'create'])->name('products.create'); // Add product
     Route::post('/', [ProductController::class, 'store'])->name('products.store'); // Store new product
+    Route::patch('/{product}/stock', [ProductController::class, 'updateStock'])->name('products.update-stock');
     Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
     Route::put('/{product}', [ProductController::class, 'update'])->name('products.update');

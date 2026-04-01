@@ -6,6 +6,7 @@ use App\Models\Size;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SizeController extends Controller
 {
@@ -27,7 +28,10 @@ class SizeController extends Controller
 public function index(Request $request)
 {
     $search = $request->input('search');
-    $perPage = $request->input('perPage', 10); // default 10 per page
+    $perPage = (int) $request->input('perPage', $request->input('per_page', 10)); // backward compatible
+    if (! in_array($perPage, [10, 25, 50], true)) {
+        $perPage = 10;
+    }
 
     $query = Size::query();
 

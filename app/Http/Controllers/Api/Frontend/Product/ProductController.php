@@ -6,11 +6,35 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\Size;
+use App\Support\FrontendProductCache;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
+    private function requestCacheKey(string $prefix, Request $request): string
+    {
+        return FrontendProductCache::makeKey($prefix, $request->query());
+    }
+
+    private function rememberFromRedis(string $key, int $seconds, Closure $callback): mixed
+    {
+        try {
+            return Cache::store('redis')->remember($key, $seconds, $callback);
+        } catch (\Throwable $e) {
+            Log::warning('Redis cache fallback used', [
+                'key' => $key,
+                'message' => $e->getMessage(),
+            ]);
+
+            return $callback();
+        }
+    }
+
     private function normalizeListingKey(?string $key): ?string
     {
         $normalized = strtolower(trim((string) $key));
@@ -76,12 +100,24 @@ class ProductController extends Controller
 
     public function getFilters(Request $request)
     {
+        $cacheTtl = (int) env('FRONTEND_FILTERS_CACHE_TTL', 120);
+        $cacheKey = $this->requestCacheKey('frontend:products:filters', $request);
+
+        $payload = $this->rememberFromRedis($cacheKey, $cacheTtl, function () use ($request) {
         // --------------------------------------------------------------------------
         // Query params
         // --------------------------------------------------------------------------
-        $selectedBrands = array_filter((array) $request->query('brand', []));
-        $selectedColors = array_filter((array) $request->query('color', []));
+        $normalizeValues = static fn (array $values): array => collect($values)
+            ->map(fn ($value) => strtolower(trim((string) $value)))
+            ->filter()
+            ->values()
+            ->all();
+
+        $selectedBrands = $normalizeValues((array) $request->query('brand', []));
+        $selectedColors = $normalizeValues((array) $request->query('color', []));
+        $selectedSizes = $normalizeValues((array) $request->query('size', []));
         $discountId = (int) $request->query('discount_id');
+        $hasPriceFilter = $request->filled('price');
 
         [$minPrice, $maxPrice] = array_map(
             'intval',
@@ -94,35 +130,64 @@ class ProductController extends Controller
         $discountRules = $this->discountRules();
         $activeDiscount = $discountRules[$discountId] ?? null;
 
-        // --------------------------------------------------------------------------
-        // Base query (discount only for slider)
-        // --------------------------------------------------------------------------
-        $scopedBaseQuery = Product::query();
-        $this->applyKeyScope($scopedBaseQuery, $request);
-        $baseQuery = clone $scopedBaseQuery;
+        $applyFilters = function (Builder $query, array $overrides = []) use (
+            $request,
+            $activeDiscount,
+            $hasPriceFilter,
+            $minPrice,
+            $maxPrice,
+            $selectedBrands,
+            $selectedColors,
+            $selectedSizes
+        ): Builder {
+            $this->applyKeyScope($query, $request);
 
-        if ($activeDiscount) {
-            $baseQuery->whereBetween('discount_percent', $activeDiscount['range']);
-        }
+            $applyDiscount = $overrides['apply_discount'] ?? true;
+            $applyPrice = $overrides['apply_price'] ?? true;
+            $brands = $overrides['brands'] ?? $selectedBrands;
+            $colors = $overrides['colors'] ?? $selectedColors;
+            $sizes = $overrides['sizes'] ?? $selectedSizes;
+
+            if ($applyDiscount && $activeDiscount) {
+                $query->whereBetween('discount_percent', $activeDiscount['range']);
+            }
+
+            if ($applyPrice && $hasPriceFilter) {
+                $query->whereBetween('price', [$minPrice, $maxPrice]);
+            }
+
+            if ($brands) {
+                $query->whereIn(DB::raw('LOWER(TRIM(brand))'), $brands);
+            }
+
+            if ($colors) {
+                $query->whereIn(DB::raw('LOWER(TRIM(color))'), $colors);
+            }
+
+            if ($sizes) {
+                $query->whereHas('sizes', function ($q) use ($sizes) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(sizes.name))'), $sizes);
+                });
+            }
+
+            return $query;
+        };
 
         // --------------------------------------------------------------------------
-        // Price range for slider (ignores user price filter)
+        // Price range for slider (depends on all active filters except price)
         // --------------------------------------------------------------------------
-        $priceRangeForSlider = (clone $baseQuery)
+        $priceRangeQuery = Product::query();
+        $applyFilters($priceRangeQuery, ['apply_price' => false]);
+        $priceRangeForSlider = $priceRangeQuery
             ->selectRaw('MIN(price) as min, MAX(price) as max')
             ->first();
 
         // --------------------------------------------------------------------------
-        // Apply price filter for actual product listing
+        // Discount counts (depends on all active filters except discount)
         // --------------------------------------------------------------------------
-        if ($request->filled('price')) {
-            $baseQuery->whereBetween('price', [$minPrice, $maxPrice]);
-        }
-
-        // --------------------------------------------------------------------------
-        // Discount counts (always based on all products)
-        // --------------------------------------------------------------------------
-        $discountCounts = (clone $scopedBaseQuery)
+        $discountCountsQuery = Product::query();
+        $applyFilters($discountCountsQuery, ['apply_discount' => false]);
+        $discountCounts = $discountCountsQuery
             ->selectRaw('
             SUM(discount_percent BETWEEN 0 AND 20)   as d1,
             SUM(discount_percent BETWEEN 21 AND 40)  as d2,
@@ -143,9 +208,11 @@ class ProductController extends Controller
         })->filter(fn ($d) => $d['count'] > 0)->values();
 
         // --------------------------------------------------------------------------
-        // Brand filters (depends on discount + price)
+        // Brand filters (depends on all active filters except brand)
         // --------------------------------------------------------------------------
-        $brandFilters = (clone $baseQuery)
+        $brandQuery = Product::query();
+        $applyFilters($brandQuery, ['brands' => []]);
+        $brandFilters = $brandQuery
             ->whereNotNull('brand')
             ->selectRaw('LOWER(TRIM(brand)) as value, COUNT(*) as count')
             ->groupBy('value')
@@ -157,10 +224,11 @@ class ProductController extends Controller
             ]);
 
         // --------------------------------------------------------------------------
-        // Color filters (depends on discount + price + selected brands)
+        // Color filters (depends on all active filters except color)
         // --------------------------------------------------------------------------
-        $colorFilters = (clone $baseQuery)
-            ->when($selectedBrands, fn ($q) => $q->whereIn('brand', $selectedBrands))
+        $colorQuery = Product::query();
+        $applyFilters($colorQuery, ['colors' => []]);
+        $colorFilters = $colorQuery
             ->whereNotNull('color')
             ->selectRaw('LOWER(TRIM(color)) as value, COUNT(*) as count')
             ->groupBy('value')
@@ -172,34 +240,36 @@ class ProductController extends Controller
             ]);
 
         // --------------------------------------------------------------------------
-        // Size filters (depends on discount + price + selected brands + colors)
+        // Size filters (depends on all active filters except size)
         // --------------------------------------------------------------------------
+        $sizeBaseQuery = Product::query();
+        $applyFilters($sizeBaseQuery, ['sizes' => []]);
         $sizeFilters = Size::query()
-            ->whereHas('products', function ($q) use ($baseQuery, $selectedBrands, $selectedColors) {
-                $q->mergeConstraintsFrom($baseQuery);
-
-                if ($selectedBrands) {
-                    $q->whereIn('brand', $selectedBrands);
-                }
-
-                if ($selectedColors) {
-                    $q->whereIn('color', $selectedColors);
-                }
-            })
             ->get()
-            ->map(fn ($size) => [
-                'label' => ucfirst($size->name),
-                'count' => $size->products()
-                    ->mergeConstraintsFrom($baseQuery)
-                    ->when($selectedBrands, fn ($q) => $q->whereIn('brand', $selectedBrands))
-                    ->when($selectedColors, fn ($q) => $q->whereIn('color', $selectedColors))
-                    ->count(),
-            ]);
+            ->map(function ($size) use ($sizeBaseQuery) {
+                $count = $size->products()
+                    ->mergeConstraintsFrom(clone $sizeBaseQuery)
+                    ->count();
+
+                return [
+                    'label' => ucfirst($size->name),
+                    'count' => $count,
+                ];
+            })
+            ->filter(fn ($size) => $size['count'] > 0)
+            ->values();
+
+        // --------------------------------------------------------------------------
+        // Total products count for currently applied filters
+        // --------------------------------------------------------------------------
+        $filteredTotalQuery = Product::query();
+        $applyFilters($filteredTotalQuery);
+        $filteredTotal = $filteredTotalQuery->count();
 
         // --------------------------------------------------------------------------
         // Response
         // --------------------------------------------------------------------------
-        return response()->json([
+        return [
             'data' => [
                 'discount' => [
                     'options' => $discountFilters,
@@ -212,12 +282,20 @@ class ProductController extends Controller
                 'brand' => $brandFilters,
                 'color' => $colorFilters,
                 'size' => $sizeFilters,
+                'totalProductsCount' => $filteredTotal,
             ],
-        ]);
+        ];
+        });
+
+        return response()->json($payload);
     }
 
     public function getFilteredProducts(Request $request)
     {
+        $cacheTtl = (int) env('FRONTEND_PRODUCTS_CACHE_TTL', 60);
+        $cacheKey = $this->requestCacheKey('frontend:products:list', $request);
+
+        $payload = $this->rememberFromRedis($cacheKey, $cacheTtl, function () use ($request) {
         // --------------------------------------------------------------------------
         // Query params
         // --------------------------------------------------------------------------
@@ -230,12 +308,13 @@ class ProductController extends Controller
             array_pad(explode('-', $request->query('price', '0-999999')), 2, 999999)
         );
 
-        $limit = (int) $request->query('limit', $request->query('per_page', 50));
-        if ($limit < 1) {
-            $limit = 50;
-        }
-        $useCursorPagination = $request->query('pagination') === 'cursor'
-            || $request->boolean('infinite');
+        $defaultLimit = 20;
+        $requestedLimit = $request->query('limit', $request->query('per_page', $defaultLimit));
+        $limit = filter_var($requestedLimit, FILTER_VALIDATE_INT, [
+            'options' => ['min_range' => 1],
+        ]) ?: $defaultLimit;
+        // Avoid requiring pagination=cursor param; use infinite scroll marker instead.
+        $useCursorPagination = $request->boolean('infinite');
 
         // --------------------------------------------------------------------------
         // Discount resolution
@@ -276,7 +355,9 @@ class ProductController extends Controller
             });
         }
 
-        $total = (clone $query)->count();
+        // Keep total here for backward compatibility with existing frontend consumers.
+        $includeTotal = $request->boolean('include_total', true);
+        $total = $includeTotal ? (clone $query)->count() : null;
 
         // --------------------------------------------------------------------------
         // Sorting
@@ -311,7 +392,25 @@ class ProductController extends Controller
         // --------------------------------------------------------------------------
         $query->with(['sizes', 'images']);
 
-        if ($useCursorPagination) {
+        // if ($useCursorPagination) {
+        //     $products = $query->cursorPaginate(
+        //         $limit,
+        //         ['*'],
+        //         'cursor',
+        //         $request->query('cursor')
+        //     );
+
+        //     return response()->json([
+        //         'data' => [
+        //             'products' => ProductResource::collection($products->items()),
+        //             'nextCursor' => $products->nextCursor()?->encode(),
+        //             'total' => $total,
+        //             'limit' => $limit,
+        //         ],
+        //     ]);
+        // }
+
+        
             $products = $query->cursorPaginate(
                 $limit,
                 ['*'],
@@ -319,28 +418,30 @@ class ProductController extends Controller
                 $request->query('cursor')
             );
 
-            return response()->json([
+            return [
                 'data' => [
-                    'products' => ProductResource::collection($products->items()),
+                    'products' => ProductResource::collection($products->items())->toArray($request),
                     'nextCursor' => $products->nextCursor()?->encode(),
                     'total' => $total,
                     'limit' => $limit,
                 ],
-            ]);
-        }
+            ];
+        });
 
-        $products = $query->paginate($limit);
+        return response()->json($payload);
+        
+
+        // $products = $query->paginate($limit);
 
         // --------------------------------------------------------------------------
         // Response
         // --------------------------------------------------------------------------
-        return response()->json([
-            'data' => [
-                'products' => ProductResource::collection($products->items()),
-                'nextCursor' => null,
-                'total' => $products->total(),
-                'limit' => $products->perPage(),
-            ],
-        ]);
+        // return response()->json([
+        //     'data' => [
+        //         'products' => ProductResource::collection($products->items()),
+        //         'total' => $products->total(),
+        //         'limit' => $products->perPage(),
+        //     ],
+        // ]);
     }
 }

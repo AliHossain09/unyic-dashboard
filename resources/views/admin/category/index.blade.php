@@ -108,21 +108,21 @@
       <!-- Left: Search -->
       <div class="flex items-center gap-3">
         <input
+          id="categorySearchInput"
           name="search"
           value="{{ request('search') }}"
           type="text"
           placeholder="Search Category"
           class="w-64 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring focus:ring-indigo-200"
-          onkeydown="if(event.key === 'Enter'){ document.getElementById('filterForm').submit(); }"
         >
       </div>
 
       <div class="flex items-center gap-3">
-        <label for="per_page" class="sr-only">Per page</label>
+        <label for="perPage" class="sr-only">Per page</label>
         <div class="relative">
-            <select id="per_page" name="per_page" onchange="document.getElementById('filterForm').submit()"
+            <select id="perPage" name="perPage" onchange="document.getElementById('filterForm').submit()"
                 class="appearance-none rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                @php $pp = request('per_page', 10); @endphp
+                @php $pp = request('perPage', request('per_page', 10)); @endphp
                 <option value="10" {{ $pp == 10 ? 'selected' : '' }}>10</option>
                 <option value="25" {{ $pp == 25 ? 'selected' : '' }}>25</option>
                 <option value="50" {{ $pp == 50 ? 'selected' : '' }}>50</option>
@@ -316,6 +316,9 @@
       const modalDialog = document.getElementById('modalDialog');
       const selectAll = document.getElementById('selectAll');
       const exportBtn = document.getElementById('exportBtn');
+      const filterForm = document.getElementById('filterForm');
+      const categorySearchInput = document.getElementById('categorySearchInput');
+      let searchTimer = null;
 
       openModalBtn?.addEventListener('click', () => modalDialog.classList.remove('hidden'));
       closeModalBtn?.addEventListener('click', () => modalDialog.classList.add('hidden'));
@@ -336,6 +339,14 @@
         const url = new URL(window.location.href);
         selected.forEach(id => url.searchParams.append('export_ids[]', id));
         window.location.href = url.toString();
+      });
+
+      // Realtime search with debounce
+      categorySearchInput?.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          filterForm?.submit();
+        }, 300);
       });
     });
 
@@ -361,5 +372,4 @@
   </script>
 
 </x-app-layout>
-
 

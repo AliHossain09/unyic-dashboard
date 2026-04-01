@@ -65,25 +65,25 @@
 
     <div class="flex items-center gap-3">
       <input
+        id="popularCategorySearchInput"
         name="search"
         value="{{ request('search') }}"
         type="text"
         placeholder="Search Popular Categories"
         class="w-64 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700
                dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:ring focus:ring-indigo-200"
-        onkeydown="if(event.key === 'Enter'){ document.getElementById('filterForm').submit(); }"
       >
     </div>
 
     <div class="flex items-center gap-3">
-      <label for="per_page" class="sr-only">Per page</label>
+      <label for="perPage" class="sr-only">Per page</label>
       <div class="relative">
-        <select id="per_page" name="per_page"
+        <select id="perPage" name="perPage"
                 onchange="document.getElementById('filterForm').submit()"
                 class="appearance-none rounded-lg border border-gray-300 dark:border-gray-700
                        dark:bg-gray-800 dark:text-gray-200 px-3 py-2 pr-8 focus:outline-none
                        focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-          @php $pp = request('per_page', 10); @endphp
+          @php $pp = request('perPage', request('per_page', 10)); @endphp
           <option value="10" {{ $pp == 10 ? 'selected' : '' }}>10</option>
           <option value="25" {{ $pp == 25 ? 'selected' : '' }}>25</option>
           <option value="50" {{ $pp == 50 ? 'selected' : '' }}>50</option>
@@ -256,6 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeDrawerBtn = document.getElementById('closeDrawerBtn');
     const drawerCancelBtn = document.getElementById('drawerCancelBtn');
     const drawer = document.getElementById('drawer');
+    const filterForm = document.getElementById('filterForm');
+    const popularCategorySearchInput = document.getElementById('popularCategorySearchInput');
+    let searchTimer = null;
 
     const openDrawer = () => drawer.classList.remove('translate-x-full');
     const closeDrawer = () => drawer.classList.add('translate-x-full');
@@ -263,6 +266,14 @@ document.addEventListener('DOMContentLoaded', () => {
     openDrawerBtn?.addEventListener('click', openDrawer);
     closeDrawerBtn?.addEventListener('click', closeDrawer);
     drawerCancelBtn?.addEventListener('click', closeDrawer);
+
+    // Realtime search with debounce
+    popularCategorySearchInput?.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+            filterForm?.submit();
+        }, 300);
+    });
 });
 </script>
 

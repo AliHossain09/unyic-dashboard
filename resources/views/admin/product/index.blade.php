@@ -1,6 +1,6 @@
 <x-app-layout>
 
-  <div class="grid gap-4 md:grid-cols-3 md:mt-6 px-4 sm:px-6 lg:px-8 py-8 w-full max-w-7xl mx-auto dark:text-white mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-t-xl">
+  <div class="grid gap-4 md:grid-cols-3 md:mt-6 px-4 sm:px-6 lg:px-8 py-8 w-full mx-3 sm:mx-4 dark:text-white mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-t-xl">
 
     <!-- Card 1 -->
     <div class="flex flex-col bg-white dark:bg-gray-800 shadow-2xl rounded-t-xl p-4">
@@ -99,44 +99,73 @@
 {{-- /////////////////////////////////////////////////////////////////////////////////////////////////////////// --}}
 
 
-<div class="p-6 lg:p-8 w-full max-w-7xl mx-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-xl shadow-sm">
+<div class="p-6 lg:p-8 w-full mx-3 sm:mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-b-xl shadow-sm">
         <!-- Heading -->
         <h1 class="text-2xl font-bold text-gray-800 dark:text-white mb-6 text-center">Product List</h1>
 
         <!-- Filters -->
         <div class="grid gap-4 md:grid-cols-3 md:mt-6 py-8 w-full mx-auto dark:text-white mb-6 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <select class="rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <option>Status</option>
-                <option>Publish</option>
-                <option>Scheduled</option>
-                <option>Inactive</option>
-            </select>
-            <select class="rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <option>Category</option>
-                <option>Accessories</option>
-                <option>Home Decor</option>
-                <option>Shoes</option>
-            </select>
-            <select class="rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <option>Stock</option>
-                <option>In Stock</option>
-                <option>Out of Stock</option>
-            </select>
+            <form method="GET" action="{{ route('products.index') }}" class="w-full">
+                <input type="hidden" name="search" value="{{ request('search') }}">
+                <input type="hidden" name="perPage" value="{{ request('perPage', 10) }}">
+                <input type="hidden" name="stock" value="{{ request('stock') }}">
+                <input type="hidden" name="status" value="{{ request('status') }}">
+                <select name="category" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    <option value="">All Categories</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ $cat->id }}" {{ request('category') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                    @endforeach
+                </select>
+            </form>
+            <form method="GET" action="{{ route('products.index') }}" class="w-full">
+                <input type="hidden" name="search" value="{{ request('search') }}">
+                <input type="hidden" name="category" value="{{ request('category') }}">
+                <input type="hidden" name="perPage" value="{{ request('perPage', 10) }}">
+                <input type="hidden" name="stock" value="{{ request('stock') }}">
+                <select name="status" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    <option value="" @selected(!request('status'))>Status</option>
+                    <option value="publish" @selected(request('status') === 'publish')>Publish</option>
+                    <option value="scheduled" @selected(request('status') === 'scheduled')>Scheduled</option>
+                    <option value="inactive" @selected(request('status') === 'inactive')>Inactive</option>
+                </select>
+            </form>
+            <form method="GET" action="{{ route('products.index') }}" class="w-full">
+                <input type="hidden" name="search" value="{{ request('search') }}">
+                <input type="hidden" name="category" value="{{ request('category') }}">
+                <input type="hidden" name="perPage" value="{{ request('perPage', 10) }}">
+                <input type="hidden" name="status" value="{{ request('status') }}">
+                <select name="stock" onchange="this.form.submit()" class="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    <option value="" @if(!request('stock')) selected @endif>All Stock</option>
+                    <option value="in_stock" @if(request('stock') == 'in_stock') selected @endif>In Stock</option>
+                    <option value="out_of_stock" @if(request('stock') == 'out_of_stock') selected @endif>Out of Stock</option>
+                </select>
+            </form>
         </div>
 
         <!-- Search, Pagination, Export, Add Product -->
         <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <div class="flex items-center gap-3">
-                <input type="text" placeholder="Search Product"
-                       class="w-64 px-3 py-2 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-            </div>
+            <form method="GET" action="{{ route('products.index') }}" class="flex items-center gap-3" x-data="{ searchTimeout: null }" @submit.prevent="clearTimeout(searchTimeout); $el.submit()">
+                <input type="hidden" name="category" value="{{ request('category') }}">
+                <input type="hidden" name="stock" value="{{ request('stock') }}">
+                <input type="hidden" name="status" value="{{ request('status') }}">
+                <input type="hidden" name="perPage" value="{{ request('perPage', 10) }}">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search Product"
+                       class="w-64 px-3 py-2 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                       @input="clearTimeout(searchTimeout); searchTimeout = setTimeout(() => $el.form.submit(), 300)">
+            </form>
 
             <div class="flex items-center gap-3">
-                <select class="rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                    <option>10</option>
-                    <option>25</option>
-                    <option>50</option>
-                </select>
+                <form method="GET" action="{{ route('products.index') }}" class="flex items-center gap-2">
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                    <input type="hidden" name="category" value="{{ request('category') }}">
+                    <input type="hidden" name="stock" value="{{ request('stock') }}">
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                    <select name="perPage" onchange="this.form.submit()" class="rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                        <option value="10" {{ request('perPage') == 10 ? 'selected' : '' }}>10</option>
+                        <option value="25" {{ request('perPage') == 25 ? 'selected' : '' }}>25</option>
+                        <option value="50" {{ request('perPage') == 50 ? 'selected' : '' }}>50</option>
+                    </select>
+                </form>
 
                 <button type="submit" form="exportForm" id="exportBtn" class="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600">
                     Export
@@ -206,7 +235,12 @@
 
                             <td class="px-4 py-3">
                                 <label class="relative inline-block">
-                                    <input type="checkbox" class="peer invisible" />
+                                    <input
+                                        type="checkbox"
+                                        class="peer invisible stock-toggle"
+                                        data-id="{{ $product->id }}"
+                                        @checked(($hasStockColumn ?? false) ? (bool) $product->is_in_stock : ((int) ($product->net_quantity ?? 0) > 0))
+                                    />
                                     <span class="absolute top-0 left-0 w-9 h-5 cursor-pointer rounded-full bg-slate-200 border border-slate-300 transition-all duration-100 peer-checked:bg-sky-700"></span>
                                     <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full z-10 transition-all duration-100 peer-checked:translate-x-4"></span>
                                 </label>
@@ -225,12 +259,19 @@
                             <td class="px-4 py-3 text-sm">{{ $product->net_quantity }}</td>
 
                             <td class="px-4 py-3">
-                                @if ($product->is_popular)
-                                    <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Popular</span>
-                                @endif
-                                @if ($product->is_new)
-                                    <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">New</span>
-                                @endif
+                                @php
+                                    $statusLabel = 'Inactive';
+                                    $statusClass = 'bg-gray-100 text-gray-800';
+
+                                    if (!empty($product->publish_at) && \Illuminate\Support\Carbon::parse($product->publish_at)->isFuture()) {
+                                        $statusLabel = 'Scheduled';
+                                        $statusClass = 'bg-amber-100 text-amber-800';
+                                    } elseif (isset($product->is_published) ? $product->is_published : ($product->is_popular || $product->is_new)) {
+                                        $statusLabel = 'Publish';
+                                        $statusClass = 'bg-green-100 text-green-800';
+                                    }
+                                @endphp
+                                <span class="text-xs px-2 py-1 rounded {{ $statusClass }}">{{ $statusLabel }}</span>
                             </td>
 
                            <td class="px-4 py-3">
@@ -663,7 +704,38 @@
     </div> --}}
 
 
-    <script>
+<script>
+  const stockUpdateUrlTemplate = @json(route('products.update-stock', ['product' => '__ID__']));
+
+  document.querySelectorAll('.stock-toggle').forEach((toggle) => {
+    toggle.addEventListener('change', async function () {
+      const productId = this.dataset.id;
+      const targetUrl = stockUpdateUrlTemplate.replace('__ID__', productId);
+      const previousState = !this.checked;
+
+      try {
+        const response = await fetch(targetUrl, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': @json(csrf_token()),
+          },
+          body: JSON.stringify({
+            is_in_stock: this.checked ? 1 : 0,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Stock update failed');
+        }
+      } catch (error) {
+        this.checked = previousState;
+        alert('Stock update failed. Please try again.');
+      }
+    });
+  });
+
   // Select / Unselect all
   document.getElementById('selectAll')?.addEventListener('change', function(e) {
     document.querySelectorAll('.export-checkbox').forEach(ch => ch.checked = e.target.checked);
@@ -696,5 +768,3 @@
 </script>
 
 </x-app-layout>
-
-
