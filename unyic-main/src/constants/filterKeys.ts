@@ -1,1 +1,0 @@
-export const FILTER_KEYS = ["brand", "color", "size", "price", "discount"] as const;
