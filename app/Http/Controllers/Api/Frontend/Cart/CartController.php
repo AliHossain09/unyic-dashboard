@@ -3,206 +3,194 @@
 namespace App\Http\Controllers\Api\Frontend\Cart;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\ProductResource;
 use App\Models\Cart;
+use App\Models\Product;
+use App\Support\GuestCookie;
+use App\Support\ProductAvailability;
+use App\Support\ShoppingIdentity;
+use App\Support\ShoppingScope;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class CartController extends Controller
 {
     public function index(Request $request)
     {
-        if (! $request->user()) {
-            return response()->json([
-                'success' => false,
-                'status' => 401,
-                'message' => 'Unauthorized. Please login first.',
-            ], 401);
-        }
+        $identity = ShoppingIdentity::resolve($request);
 
-        $carts = Cart::with('product.images', 'product.sizes', 'product.category')
-            ->where('user_id', $request->user()->id)
-            ->latest()
-            ->get();
+        $cartItems = ShoppingScope::apply(Cart::with('product')->latest(), $identity)->get();
 
-        $data = $carts->map(function ($item) {
-            return [
-                'id' => $item->id,
-                'size' => $item->size,
-                'quantity' => $item->quantity,
-                // 'product' => new ProductResource($item->product),
-                'product' => (new ProductResource($item->product))->hideDetails(),
-            ];
+        $cartItems->transform(function (Cart $item) {
+            return $this->appendAvailability($item);
         });
 
-        return response()->json([
+        ShoppingScope::touchGuestItems(Cart::class, $identity);
+
+        return $this->withGuestCookie($identity, response()->json([
             'success' => true,
-            'data' => $data,
-        ], 200);
+            'is_guest' => $identity['type'] === 'guest',
+            'data' => $cartItems,
+        ]));
     }
 
     public function store(Request $request)
     {
-        // 1️⃣ Auth check
-        $user = $request->user();
-        if (! $user) {
-            return response()->json([
-                'success' => false,
-                'status' => 401,
-                'message' => 'Unauthenticated. Please login first.',
-            ], 401);
-        }
+        $validator = Validator::make($request->all(), [
+            'product_id' => ['required', 'exists:products,id'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
+            'size' => ['nullable', 'string', 'max:50'],
+        ]);
 
-        // 2️⃣ Validation
-        try {
-            $request->validate([
-                'product_id' => 'required|exists:products,id',
-                'size' => 'required|string',
-                'quantity' => 'nullable|integer|min:1', // optional but must be >=1 if provided
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'status' => 422,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
+                'message' => $validator->errors()->first(),
             ], 422);
         }
 
-        // 3️⃣ Check if product already exists in user's cart (same size)
-        $cart = Cart::where('user_id', $user->id)
-            ->where('product_id', $request->product_id)
-            ->where('size', $request->size)
-            ->first();
+        $identity = ShoppingIdentity::resolve($request);
+        $product = Product::query()->find($request->integer('product_id'));
 
-        if ($cart) {
-            // ✅ Increment existing quantity or set specific quantity if provided
-            $cart->quantity = $request->quantity ?? ($cart->quantity + 1);
-            $cart->save();
-        } else {
-            // ✅ New cart item, default quantity = 1 if not provided
-            $cart = Cart::create([
-                'user_id' => $user->id,
-                'product_id' => $request->product_id,
-                'size' => $request->size,
-                'quantity' => $request->quantity ?? 1,
-            ]);
-        }
-
-        // 4️⃣ Response
-        return response()->json([
-            'success' => true,
-            'status' => 201,
-            'message' => 'Product added/updated in cart successfully',
-            'data' => [
-                'id' => $cart->id,
-                'size' => $cart->size,
-                'quantity' => $cart->quantity,
-                'product' => new ProductResource($cart->product),
-            ],
-        ], 201);
-    }
-
-    public function update(Request $request, $id)
-    {
-        // 1. Auth check (same as your original)
-        if (! $request->user()) {
+        if (! $product) {
             return response()->json([
                 'success' => false,
-                'status' => 401,
-                'message' => 'Unauthenticated. Please login first.',
-            ], 401);
-        }
-
-        // 2. Validation (same structure as original)
-        try {
-            $request->validate([
-                'size' => 'required|string',
-                'quantity' => 'nullable|integer|min:1',
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'status' => 422,
-                'message' => 'Validation failed',
-                'errors' => $e->errors(),
-            ], 422);
-        }
-
-        // 3. Fetch user's cart item
-        $cart = Cart::where('id', $id)
-            ->where('user_id', $request->user()->id)
-            ->firstOrFail();
-
-        $newQuantity = $request->quantity ?? $cart->quantity;
-
-        DB::transaction(function () use ($request, $cart, &$newQuantity, $id) {
-
-            // 4. Check if same product+size exists (excluding current)
-            $existing = Cart::where('user_id', $request->user()->id)
-                ->where('product_id', $cart->product_id)
-                ->where('size', $request->size)
-                ->where('id', '!=', $id)
-                ->first();
-
-            if ($existing) {
-                $newQuantity += $existing->quantity;
-                $existing->delete();
-            }
-
-            // 5. Update current cart item
-            $cart->update([
-                'size' => $request->size,
-                'quantity' => $newQuantity,
-            ]);
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cart updated successfully',
-            'data' => [
-                'id' => $cart->id,
-                'size' => $cart->size,
-                'quantity' => $cart->quantity,
-                'product' => new ProductResource($cart->product),
-            ],
-        ], 200);
-    }
-
-    public function destroy(Request $request, $id = null)
-    {
-        if (! $request->user()) {
-            return response()->json([
-                'success' => false,
-                'status' => 401,
-                'message' => 'Unauthenticated. Please login first.',
-            ], 401);
-        }
-
-        if (! $id) {
-            return response()->json([
-                'success' => false,
-                'status' => 400,
-                'message' => 'Cart ID is required',
-            ], 400);
-        }
-
-        $cart = Cart::where('user_id', $request->user()->id)->find($id);
-
-        if (! $cart) {
-            return response()->json([
-                'success' => false,
-                'status' => 404,
-                'message' => 'Cart item not found',
+                'message' => 'Product not found.',
             ], 404);
         }
 
-        $cart->delete();
+        $quantity = max(1, (int) ($request->input('quantity') ?: 1));
+        $size = $request->input('size');
 
-        return response()->json([
+        $cartItem = ShoppingScope::apply(
+            Cart::query()->where('product_id', $product->id)->where('size', $size),
+            $identity
+        )->first();
+
+        if ($cartItem) {
+            $cartItem->quantity += $quantity;
+            $cartItem->fill(ShoppingScope::guestActivityPayload($identity));
+            $cartItem->save();
+        } else {
+            $cartItem = Cart::create([
+                'user_id' => $identity['user_id'],
+                'guest_token' => $identity['guest_token'],
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'size' => $size,
+                ...ShoppingScope::guestActivityPayload($identity),
+            ]);
+        }
+
+        return $this->withGuestCookie($identity, response()->json([
             'success' => true,
-            'status' => 200,
-            'message' => 'Product removed from cart successfully',
+            'message' => 'Product added to cart successfully.',
+            'data' => $this->appendAvailability($cartItem->load('product')),
+        ]));
+    }
+
+    public function update(Request $request, int $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'quantity' => ['required', 'integer', 'min:1'],
+            'size' => ['nullable', 'string', 'max:50'],
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $identity = ShoppingIdentity::resolve($request);
+
+        $cartItem = ShoppingScope::apply(Cart::query(), $identity)
+            ->where('id', $id)
+            ->first();
+
+        if (! $cartItem) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cart item not found.',
+            ], 404);
+        }
+
+        $newSize = $request->input('size', $cartItem->size);
+
+        $duplicate = ShoppingScope::apply(Cart::query(), $identity)
+            ->where('product_id', $cartItem->product_id)
+            ->where('size', $newSize)
+            ->where('id', '!=', $cartItem->id)
+            ->first();
+
+        if ($duplicate) {
+            $duplicate->quantity += $request->integer('quantity');
+            $duplicate->fill(ShoppingScope::guestActivityPayload($identity));
+            $duplicate->save();
+            $cartItem->delete();
+
+            $cartItem = $duplicate->load('product');
+        } else {
+            $cartItem->quantity = $request->integer('quantity');
+            $cartItem->size = $newSize;
+            $cartItem->fill(ShoppingScope::guestActivityPayload($identity));
+            $cartItem->save();
+            $cartItem->load('product');
+        }
+
+        return $this->withGuestCookie($identity, response()->json([
+            'success' => true,
+            'message' => 'Cart updated successfully.',
+            'data' => $this->appendAvailability($cartItem),
+        ]));
+    }
+
+    public function destroy(Request $request, ?int $id = null)
+    {
+        $identity = ShoppingIdentity::resolve($request);
+
+        $query = ShoppingScope::apply(Cart::query(), $identity);
+
+        if ($id !== null) {
+            $cartItem = (clone $query)->where('id', $id)->first();
+
+            if (! $cartItem) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cart item not found.',
+                ], 404);
+            }
+
+            $cartItem->delete();
+            $message = 'Cart item removed successfully.';
+        } else {
+            $query->delete();
+            $message = 'Cart cleared successfully.';
+        }
+
+        return $this->withGuestCookie($identity, response()->json([
+            'success' => true,
+            'message' => $message,
+        ]));
+    }
+
+    protected function appendAvailability(Cart $cartItem): Cart
+    {
+        $availability = ProductAvailability::fromProduct($cartItem->product);
+
+        $cartItem->setAttribute('is_available', $availability['is_available']);
+        $cartItem->setAttribute('stock_status', $availability['stock_status']);
+        $cartItem->setAttribute('can_checkout', $availability['can_checkout']);
+
+        return $cartItem;
+    }
+
+    protected function withGuestCookie(array $identity, $response)
+    {
+        if ($identity['type'] === 'guest' && $identity['guest_token']) {
+            $response->cookie(GuestCookie::make($identity['guest_token']));
+        }
+
+        return $response;
     }
 }

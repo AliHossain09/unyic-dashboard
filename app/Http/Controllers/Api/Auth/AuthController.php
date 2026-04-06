@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\User;
+use App\Support\GuestCookie;
+use App\Support\GuestShoppingMerger;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -112,7 +113,9 @@ public function login(Request $request)
 
     $token = $user->createToken('api-token')->plainTextToken;
 
-    return response()->json([
+    GuestShoppingMerger::mergeIntoUserFromToken($request->cookie(GuestCookie::NAME), $user);
+
+    $response = response()->json([
         'success' => true,
         'status' => 200,
         'message' => 'Login successful',
@@ -125,6 +128,10 @@ public function login(Request $request)
             ],
         ],
     ], 200);
+
+    $response->cookie(GuestCookie::forget());
+
+    return $response;
 }
 
 

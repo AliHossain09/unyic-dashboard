@@ -2,15 +2,26 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Wishlist extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'product_id'];
+    protected $fillable = [
+        'user_id',
+        'guest_token',
+        'product_id',
+        'expires_at',
+        'last_activity_at',
+    ];
 
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'last_activity_at' => 'datetime',
+    ];
+    
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -20,5 +31,4 @@ class Wishlist extends Model
     {
         return $this->belongsTo(Product::class);
     }
-
 }
