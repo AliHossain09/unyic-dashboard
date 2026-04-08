@@ -157,8 +157,11 @@
             </div>
           </th>
           <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">Name</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">Brand</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">Short Description</th>
           <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">Description</th>
           <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">Banner</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold text-gray-600 dark:text-gray-300">Featured</th>
           <th class="px-4 py-3 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">Actions</th>
         </tr>
       </thead>
@@ -172,6 +175,8 @@
             </div>
           </td>
           <td class="px-4 py-3 text-sm text-center text-gray-800 dark:text-gray-200">{{ $collection->title }}</td>
+          <td class="px-4 py-3 text-sm text-center text-gray-800 dark:text-gray-200">{{ $collection->brand ?? '-' }}</td>
+          <td class="px-4 py-3 text-sm text-center text-gray-800 dark:text-gray-200 break-words max-w-xs">{{ $collection->short_description ?? '-' }}</td>
           <td class="px-4 py-3 text-sm text-center text-gray-800 dark:text-gray-200 break-words max-w-xs">{{ $collection->description }}</td>
           <td class="px-4 py-3 text-sm text-center text-gray-800 dark:text-gray-200">
             @if ($collection->banner_image)
@@ -180,6 +185,7 @@
               <span class="text-gray-400">No Image</span>
             @endif
           </td>
+          <td class="px-4 py-3 text-sm text-center text-gray-800 dark:text-gray-200">{{ $collection->is_featured ? 'Yes' : 'No' }}</td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end gap-2">
               <a href="{{ route('collections.edit', $collection) }}" class="inline-flex items-center p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -200,7 +206,7 @@
         </tr>
         @empty
         <tr>
-          <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No collections found.</td>
+          <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-300">No collections found.</td>
         </tr>
         @endforelse
       </tbody>
@@ -249,6 +255,25 @@
                 <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                 <textarea name="description" id="description" rows="3"
                           class="w-full mt-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label for="brand" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Brand</label>
+                <input type="text" name="brand" id="brand"
+                       class="w-full mt-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+            </div>
+
+            <div class="mb-4">
+                <label for="short_description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Short Description</label>
+                <textarea name="short_description" id="short_description" rows="2"
+                          class="w-full mt-1 rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" name="is_featured" value="1" checked>
+                    <span>Featured Collection</span>
+                </label>
             </div>
 
             <div class="mb-4">
@@ -323,4 +348,3 @@ function confirmDelete(event) {
 
 
 </x-app-layout>
-

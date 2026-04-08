@@ -17,6 +17,23 @@
                 <input type="text" step="0.01" name="description" class="border rounded w-full p-2">
             </div>
 
+            <div>
+                <label class="block font-medium">Brand</label>
+                <input type="text" name="brand" class="border rounded w-full p-2">
+            </div>
+
+            <div>
+                <label class="block font-medium">Short Description</label>
+                <input type="text" name="short_description" class="border rounded w-full p-2">
+            </div>
+
+            <div>
+                <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" name="is_featured" value="1" checked>
+                    <span>Featured Collection</span>
+                </label>
+            </div>
+
             <!-- Old Price -->
             <div>
                 <label class="block font-medium">Banner Image</label>

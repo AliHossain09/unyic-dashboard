@@ -69,6 +69,13 @@
                 {{ $collection->description ?? 'No description provided.' }}
             </p>
 
+            <div class="mt-4 space-y-2 text-[#224f34]">
+                <p><strong>Brand:</strong> {{ $collection->brand ?? '-' }}</p>
+                <p><strong>Short Description:</strong> {{ $collection->short_description ?? '-' }}</p>
+                <p><strong>Slug:</strong> {{ $collection->slug ?? '-' }}</p>
+                <p><strong>Featured:</strong> {{ $collection->is_featured ? 'Yes' : 'No' }}</p>
+            </div>
+
 
             <a href="{{ route('collections.index') }}">
                 <button class="px-16 py-5 bg-[#224f34] rounded-[3px] shadow text-white text-xl font-medium font-['Poppins'] uppercase">

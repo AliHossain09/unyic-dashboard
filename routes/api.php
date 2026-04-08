@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\Size\SizeController;
 use App\Http\Controllers\Api\Admin\SubCategory\SubCategoryController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\YourController;
+use App\Http\Controllers\Api\Frontend\Collection\CollectionController as FrontendCollectionController;
 use App\Http\Controllers\Api\NewArrivalCategory\NewArrivalCategoryController as ApiNewArrivalCategoryController;
 use App\Http\Controllers\Api\Frontend\Cart\CartController as FrontCartController;
 use App\Http\Controllers\Api\Frontend\Product\ProductController as FrontendProductController;
@@ -168,6 +169,7 @@ Route::get('/products/most-viewed', [ProductController::class, 'mostViewed']);
 Route::prefix('collections')->group(function () {
     Route::get('/', [CollectionController::class, 'index']);
     Route::post('/', [CollectionController::class, 'store']);
+    Route::get('/featured', [FrontendCollectionController::class, 'featured']);
 });
 
 // =================== Products (Frontend APIs) ===================

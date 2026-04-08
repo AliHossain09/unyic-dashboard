@@ -31,6 +31,8 @@ public function index(Request $request)
         $query->where(function($q) use ($search) {
             $q->where('title', 'like', "%{$search}%")
               ->orWhere('description', 'like', "%{$search}%")
+              ->orWhere('brand', 'like', "%{$search}%")
+              ->orWhere('short_description', 'like', "%{$search}%")
               ->orWhere('banner_image', 'like', "%{$search}%");
         });
     }
@@ -48,15 +50,18 @@ public function index(Request $request)
             $handle = fopen('php://output', 'w');
 
             // CSV header
-            fputcsv($handle, ['ID', 'Name', 'Description', 'Banner Image', 'Created At']);
+            fputcsv($handle, ['ID', 'Name', 'Brand', 'Short Description', 'Description', 'Banner Image', 'Featured', 'Created At']);
 
             // Data rows
             foreach ($exportData as $collection) {
                 fputcsv($handle, [
                     $collection->id,
                     $collection->title,
+                    $collection->brand,
+                    $collection->short_description,
                     $collection->description,
                     $collection->banner_image,
+                    $collection->is_featured ? 'Yes' : 'No',
                     $collection->created_at->format('Y-m-d H:i:s'),
                 ]);
             }
@@ -93,7 +98,10 @@ public function index(Request $request)
     $request->validate([
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
+        'brand' => 'nullable|string|max:255',
+        'short_description' => 'nullable|string|max:255',
         'banner_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'is_featured' => 'nullable|boolean',
     ]);
 
     $imagePath = null;
@@ -117,7 +125,10 @@ public function index(Request $request)
     Collection::create([
         'title' => $request->title,
         'description' => $request->description,
+        'brand' => $request->brand,
+        'short_description' => $request->short_description,
         'banner_image' => $imagePath,
+        'is_featured' => $request->boolean('is_featured', true),
     ]);
 
     return redirect()->route('collections.index')->with('success', 'Collection created successfully!');
@@ -137,9 +148,12 @@ public function index(Request $request)
     public function update(Request $request, Collection $collection)
     {
         $request->validate([
-            'name'        => 'required|string|max:255|unique:collections,name,' . $collection->id,
+            'title' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'brand' => 'nullable|string|max:255',
+            'short_description' => 'nullable|string|max:255',
             'banner_image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'is_featured' => 'nullable|boolean',
         ]);
 
         $path = $collection->banner_image;
@@ -152,9 +166,12 @@ public function index(Request $request)
         }
 
         $collection->update([
-            'name'        => $request->name,
+            'title' => $request->title,
             'description' => $request->description,
+            'brand' => $request->brand,
+            'short_description' => $request->short_description,
             'banner_image'=> $path,
+            'is_featured' => $request->boolean('is_featured', false),
         ]);
 
         return redirect()->route('collections.index')->with('success', 'Collection updated successfully!');
