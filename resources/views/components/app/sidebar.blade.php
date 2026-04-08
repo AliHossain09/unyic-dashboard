@@ -234,6 +234,15 @@
                                         Sub Category
                                     </a>
                                 </li>
+
+                                <li class="mb-1 last:mb-0">
+                                    <a href="{{ route('new_arrival_categories.index') }}"
+                                        class="block text-sm font-medium dark:text-gray-400
+                                            hover:text-gray-700 dark:hover:text-gray-200 transition truncate
+                                            @if(request()->routeIs('new_arrival_categories.*')) text-violet-500 @endif">
+                                        New Arrival Categories
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </li>
@@ -2579,6 +2588,5 @@ x-data="{ open: {{ request()->is('carts') || request()->is('carts/*') ? 'true' :
 </div>
     @endif
 @endauth
-
 
 

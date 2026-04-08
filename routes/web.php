@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Admin\Cart\CartController;
 use App\Http\Controllers\Api\Admin\Wishlist\wishlistController;
 
 use App\Http\Controllers\View\Banner\BannerController;
+use App\Http\Controllers\View\NewArrivalCategory\NewArrivalCategoryController;
 use App\Http\Controllers\View\PopularCategory\PopularCategoryController;
 
 // use App\Http\Controllers\Api\Admin\Cart\CartController as AdminCartController;
@@ -283,6 +284,16 @@ Route::prefix('popular_categories')->group(function () {
     Route::get('/{banner}/edit', [PopularCategoryController::class, 'edit'])->name('popular_categories.edit');
     Route::put('/{banner}', [PopularCategoryController::class, 'update'])->name('popular_categories.update');
     Route::delete('/{banner}', [PopularCategoryController::class, 'destroy'])->name('popular_categories.destroy');
+});
+
+Route::prefix('new_arrival_categories')->group(function () {
+    Route::get('/', [NewArrivalCategoryController::class, 'index'])->name('new_arrival_categories.index');
+    Route::get('/create', [NewArrivalCategoryController::class, 'create'])->name('new_arrival_categories.create');
+    Route::post('/', [NewArrivalCategoryController::class, 'store'])->name('new_arrival_categories.store');
+    Route::get('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'show'])->name('new_arrival_categories.show');
+    Route::get('/{newArrivalCategory}/edit', [NewArrivalCategoryController::class, 'edit'])->name('new_arrival_categories.edit');
+    Route::put('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'update'])->name('new_arrival_categories.update');
+    Route::delete('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'destroy'])->name('new_arrival_categories.destroy');
 });
 
 Route::prefix('products')->group(function () {

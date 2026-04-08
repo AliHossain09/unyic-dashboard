@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\Size\SizeController;
 use App\Http\Controllers\Api\Admin\SubCategory\SubCategoryController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\YourController;
+use App\Http\Controllers\Api\NewArrivalCategory\NewArrivalCategoryController as ApiNewArrivalCategoryController;
 use App\Http\Controllers\Api\Frontend\Cart\CartController as FrontCartController;
 use App\Http\Controllers\Api\Frontend\Product\ProductController as FrontendProductController;
 
@@ -34,6 +35,10 @@ Route::prefix('banners')->group(function () {
 Route::prefix('popular-categories')->group(function () {
     Route::get('/', [PopularCategoryController::class, 'index']);
     Route::post('/', [PopularCategoryController::class, 'store']);
+});
+
+Route::prefix('new_arrival_categories')->group(function () {
+    Route::get('/', [ApiNewArrivalCategoryController::class, 'index']);
 });
 
 /*
