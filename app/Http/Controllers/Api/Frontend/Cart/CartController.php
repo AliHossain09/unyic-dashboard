@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api\Frontend\Cart;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CartItemResource;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Support\GuestCookie;
-use App\Support\ProductAvailability;
+use App\Support\ProductInteractionTracker;
 use App\Support\ShoppingIdentity;
 use App\Support\ShoppingScope;
 use Illuminate\Http\Request;
@@ -18,18 +19,17 @@ class CartController extends Controller
     {
         $identity = ShoppingIdentity::resolve($request);
 
-        $cartItems = ShoppingScope::apply(Cart::with('product')->latest(), $identity)->get();
-
-        $cartItems->transform(function (Cart $item) {
-            return $this->appendAvailability($item);
-        });
+        $cartItems = ShoppingScope::apply(
+            Cart::with(['product.images', 'product.sizes'])->latest(),
+            $identity
+        )->get();
 
         ShoppingScope::touchGuestItems(Cart::class, $identity);
 
         return $this->withGuestCookie($identity, response()->json([
             'success' => true,
             'is_guest' => $identity['type'] === 'guest',
-            'data' => $cartItems,
+            'data' => CartItemResource::collection($cartItems),
         ]));
     }
 
@@ -81,10 +81,12 @@ class CartController extends Controller
             ]);
         }
 
+        ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_CART);
+
         return $this->withGuestCookie($identity, response()->json([
             'success' => true,
             'message' => 'Product added to cart successfully.',
-            'data' => $this->appendAvailability($cartItem->load('product')),
+            'data' => new CartItemResource($cartItem->load(['product.images', 'product.sizes'])),
         ]));
     }
 
@@ -129,19 +131,19 @@ class CartController extends Controller
             $duplicate->save();
             $cartItem->delete();
 
-            $cartItem = $duplicate->load('product');
+            $cartItem = $duplicate->load(['product.images', 'product.sizes']);
         } else {
             $cartItem->quantity = $request->integer('quantity');
             $cartItem->size = $newSize;
             $cartItem->fill(ShoppingScope::guestActivityPayload($identity));
             $cartItem->save();
-            $cartItem->load('product');
+            $cartItem->load(['product.images', 'product.sizes']);
         }
 
         return $this->withGuestCookie($identity, response()->json([
             'success' => true,
             'message' => 'Cart updated successfully.',
-            'data' => $this->appendAvailability($cartItem),
+            'data' => new CartItemResource($cartItem),
         ]));
     }
 
@@ -172,17 +174,6 @@ class CartController extends Controller
             'success' => true,
             'message' => $message,
         ]));
-    }
-
-    protected function appendAvailability(Cart $cartItem): Cart
-    {
-        $availability = ProductAvailability::fromProduct($cartItem->product);
-
-        $cartItem->setAttribute('is_available', $availability['is_available']);
-        $cartItem->setAttribute('stock_status', $availability['stock_status']);
-        $cartItem->setAttribute('can_checkout', $availability['can_checkout']);
-
-        return $cartItem;
     }
 
     protected function withGuestCookie(array $identity, $response)

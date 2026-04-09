@@ -11,9 +11,10 @@ use App\Http\Controllers\Api\Admin\Size\SizeController;
 use App\Http\Controllers\Api\Admin\SubCategory\SubCategoryController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\YourController;
-use App\Http\Controllers\Api\SpotlightBrand\SpotlightBrandController as ApiSpotlightBrandController;
 use App\Http\Controllers\Api\Frontend\Collection\CollectionController as FrontendCollectionController;
 use App\Http\Controllers\Api\NewArrivalCategory\NewArrivalCategoryController as ApiNewArrivalCategoryController;
+use App\Http\Controllers\Api\Frontend\Recommendation\RecommendationController;
+use App\Http\Controllers\Api\SpotlightBrand\SpotlightBrandController as ApiSpotlightBrandController;
 use App\Http\Controllers\Api\Frontend\Cart\CartController as FrontCartController;
 use App\Http\Controllers\Api\Frontend\Product\ProductController as FrontendProductController;
 
@@ -44,6 +45,7 @@ Route::prefix('new_arrival_categories')->group(function () {
 });
 
 Route::get('/spotlight-brands', [ApiSpotlightBrandController::class, 'index']);
+Route::get('/recommended-for-you', [RecommendationController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
@@ -69,7 +71,7 @@ Route::middleware(['auth:sanctum', 'role:user'])->get('/user-dashboard', functio
     return response()->json(['message' => 'Welcome to E-commerce']);
 });
 
-Route::middleware(['auth:sanctum'])->group(function () {
+
     // Cart
     Route::get('/cart', [FrontCartController::class, 'index']);
     Route::post('/cart', [FrontCartController::class, 'store']);
@@ -81,7 +83,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/wishlist', [FrontWishlistController::class, 'store']);
     Route::delete('/wishlist/{productId?}', [FrontWishlistController::class, 'destroy']);
     // Route::delete('/wishlist/{id}', [FrontWishlistController::class, 'destroy']);
-});
+
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -184,6 +186,8 @@ Route::prefix('frontend/products')->group(function () {
     //  FILTER ROUTE
     Route::get('/', [FrontendProductController::class, 'getFilteredProducts']);
     Route::get('/filters', [FrontendProductController::class, 'getFilters']);
+    Route::get('/{value}', [FrontendProductController::class, 'show']);
+    Route::post('/{product}/track-view', [FrontendProductController::class, 'trackView']);
 });
 
 // Route::middleware('auth:sanctum')->get('/me', function () {

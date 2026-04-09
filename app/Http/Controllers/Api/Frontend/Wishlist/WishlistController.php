@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api\Frontend\Wishlist;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\Wishlist;
 use App\Support\GuestCookie;
-use App\Support\ProductAvailability;
+use App\Support\ProductInteractionTracker;
 use App\Support\ShoppingIdentity;
 use App\Support\ShoppingScope;
 use Illuminate\Http\Request;
@@ -18,18 +19,17 @@ class WishlistController extends Controller
     {
         $identity = ShoppingIdentity::resolve($request);
 
-        $wishlistItems = ShoppingScope::apply(Wishlist::with('product')->latest(), $identity)->get();
-
-        $wishlistItems->transform(function (Wishlist $item) {
-            return $this->appendAvailability($item);
-        });
+        $wishlistItems = ShoppingScope::apply(
+            Wishlist::with(['product.images', 'product.sizes', 'product.category'])->latest(),
+            $identity
+        )->get();
 
         ShoppingScope::touchGuestItems(Wishlist::class, $identity);
 
         return $this->withGuestCookie($identity, response()->json([
             'success' => true,
             'is_guest' => $identity['type'] === 'guest',
-            'data' => $wishlistItems,
+            'data' => ProductResource::collection($wishlistItems->pluck('product')),
         ]));
     }
 
@@ -65,10 +65,12 @@ class WishlistController extends Controller
             $wishlistItem->fill(ShoppingScope::guestActivityPayload($identity));
             $wishlistItem->save();
 
+            ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_WISHLIST);
+
             return $this->withGuestCookie($identity, response()->json([
                 'success' => true,
                 'message' => 'Product already exists in wishlist.',
-                'data' => $this->appendAvailability($wishlistItem->load('product')),
+                'data' => new ProductResource($wishlistItem->load(['product.images', 'product.sizes', 'product.category'])->product),
             ]));
         }
 
@@ -79,10 +81,12 @@ class WishlistController extends Controller
             ...ShoppingScope::guestActivityPayload($identity),
         ]);
 
+        ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_WISHLIST);
+
         return $this->withGuestCookie($identity, response()->json([
             'success' => true,
             'message' => 'Product added to wishlist successfully.',
-            'data' => $this->appendAvailability($wishlistItem->load('product')),
+            'data' => new ProductResource($wishlistItem->load(['product.images', 'product.sizes', 'product.category'])->product),
         ]));
     }
 
@@ -113,16 +117,6 @@ class WishlistController extends Controller
             'success' => true,
             'message' => $message,
         ]));
-    }
-
-    protected function appendAvailability(Wishlist $wishlistItem): Wishlist
-    {
-        $availability = ProductAvailability::fromProduct($wishlistItem->product);
-
-        $wishlistItem->setAttribute('is_available', $availability['is_available']);
-        $wishlistItem->setAttribute('stock_status', $availability['stock_status']);
-
-        return $wishlistItem;
     }
 
     protected function withGuestCookie(array $identity, $response)

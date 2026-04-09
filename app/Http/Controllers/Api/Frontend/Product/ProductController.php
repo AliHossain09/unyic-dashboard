@@ -7,6 +7,9 @@ use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Models\Size;
 use App\Support\FrontendProductCache;
+use App\Support\GuestCookie;
+use App\Support\ProductInteractionTracker;
+use App\Support\ShoppingIdentity;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -16,6 +19,51 @@ use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
+    private function validateListingScope(Request $request): ?array
+    {
+        $rawKey = $request->query('key');
+        $rawKeySlug = $request->query('keySlug');
+
+        $hasKey = $rawKey !== null && trim((string) $rawKey) !== '';
+        $hasKeySlug = $rawKeySlug !== null && trim((string) $rawKeySlug) !== '';
+
+        if (! $hasKey && ! $hasKeySlug) {
+            return null;
+        }
+
+        $key = $this->normalizeListingKey($rawKey);
+        $keySlug = $this->normalizeSlug($rawKeySlug);
+
+        if (! $hasKey || ! $hasKeySlug || ! $key || ! $keySlug) {
+            return [
+                'status' => 404,
+                'body' => [
+                    'success' => false,
+                    'message' => 'Invalid listing key or slug.',
+                ],
+            ];
+        }
+
+        $exists = match ($key) {
+            'department' => DB::table('departments')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
+            'category' => DB::table('categories')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
+            'sub-category' => DB::table('sub_categories')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
+            default => false,
+        };
+
+        if (! $exists) {
+            return [
+                'status' => 404,
+                'body' => [
+                    'success' => false,
+                    'message' => 'Listing not found.',
+                ],
+            ];
+        }
+
+        return null;
+    }
+
     private function requestCacheKey(string $prefix, Request $request): string
     {
         return FrontendProductCache::makeKey($prefix, $request->query());
@@ -100,6 +148,11 @@ class ProductController extends Controller
 
     public function getFilters(Request $request)
     {
+        $validationError = $this->validateListingScope($request);
+        if ($validationError) {
+            return response()->json($validationError['body'], $validationError['status']);
+        }
+
         $cacheTtl = (int) env('FRONTEND_FILTERS_CACHE_TTL', 120);
         $cacheKey = $this->requestCacheKey('frontend:products:filters', $request);
 
@@ -292,6 +345,11 @@ class ProductController extends Controller
 
     public function getFilteredProducts(Request $request)
     {
+        $validationError = $this->validateListingScope($request);
+        if ($validationError) {
+            return response()->json($validationError['body'], $validationError['status']);
+        }
+
         $cacheTtl = (int) env('FRONTEND_PRODUCTS_CACHE_TTL', 60);
         $cacheKey = $this->requestCacheKey('frontend:products:list', $request);
 
@@ -443,5 +501,44 @@ class ProductController extends Controller
         //         'limit' => $products->perPage(),
         //     ],
         // ]);
+    }
+
+    public function show(Request $request, $value)
+    {
+        $product = Product::with(['category', 'subCategory', 'sizes', 'images'])
+            ->where(function ($query) use ($value) {
+                $query->where('id', $value)
+                    ->orWhere('slug', $value);
+            })
+            ->firstOrFail();
+
+        $product->increment('views');
+        $identity = ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_VIEW);
+
+        return $this->withGuestCookie($identity, response()->json([
+            'success' => true,
+            'message' => 'Product fetched successfully',
+            'data' => new ProductResource($product->fresh(['category', 'subCategory', 'sizes', 'images'])),
+        ]));
+    }
+
+    public function trackView(Request $request, Product $product)
+    {
+        $product->increment('views');
+        $identity = ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_VIEW);
+
+        return $this->withGuestCookie($identity, response()->json([
+            'success' => true,
+            'message' => 'Product view tracked successfully',
+        ]));
+    }
+
+    protected function withGuestCookie(array $identity, $response)
+    {
+        if ($identity['type'] === 'guest' && $identity['guest_token']) {
+            $response->cookie(GuestCookie::make($identity['guest_token']));
+        }
+
+        return $response;
     }
 }
