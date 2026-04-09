@@ -243,6 +243,15 @@
                                         New Arrival Categories
                                     </a>
                                 </li>
+
+                                <li class="mb-1 last:mb-0">
+                                    <a href="{{ route('spotlight_brands.index') }}"
+                                        class="block text-sm font-medium dark:text-gray-400
+                                            hover:text-gray-700 dark:hover:text-gray-200 transition truncate
+                                            @if(request()->routeIs('spotlight_brands.*')) text-violet-500 @endif">
+                                        Brands In the Spotlight
+                                    </a>
+                                </li>
                             </ul>
                         </div>
                     </li>
@@ -2588,5 +2597,4 @@ x-data="{ open: {{ request()->is('carts') || request()->is('carts/*') ? 'true' :
 </div>
     @endif
 @endauth
-
 

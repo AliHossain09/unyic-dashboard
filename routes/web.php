@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\Admin\Wishlist\wishlistController;
 use App\Http\Controllers\View\Banner\BannerController;
 use App\Http\Controllers\View\NewArrivalCategory\NewArrivalCategoryController;
 use App\Http\Controllers\View\PopularCategory\PopularCategoryController;
+use App\Http\Controllers\View\SpotlightBrand\SpotlightBrandController;
 
 // use App\Http\Controllers\Api\Admin\Cart\CartController as AdminCartController;
 // use App\Http\Controllers\Api\Admin\Wishlist\WishlistController as AdminWishlistController;
@@ -294,6 +295,17 @@ Route::prefix('new_arrival_categories')->group(function () {
     Route::get('/{newArrivalCategory}/edit', [NewArrivalCategoryController::class, 'edit'])->name('new_arrival_categories.edit');
     Route::put('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'update'])->name('new_arrival_categories.update');
     Route::delete('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'destroy'])->name('new_arrival_categories.destroy');
+});
+
+Route::prefix('spotlight_brands')->group(function () {
+    Route::get('/', [SpotlightBrandController::class, 'index'])->name('spotlight_brands.index');
+    Route::get('/create', [SpotlightBrandController::class, 'create'])->name('spotlight_brands.create');
+    Route::post('/', [SpotlightBrandController::class, 'store'])->name('spotlight_brands.store');
+    Route::get('/{spotlightBrand}', [SpotlightBrandController::class, 'show'])->name('spotlight_brands.show');
+    Route::get('/{spotlightBrand}/edit', [SpotlightBrandController::class, 'edit'])->name('spotlight_brands.edit');
+    Route::put('/{spotlightBrand}', [SpotlightBrandController::class, 'update'])->name('spotlight_brands.update');
+    Route::patch('/{spotlightBrand}/toggle-status', [SpotlightBrandController::class, 'toggleStatus'])->name('spotlight_brands.toggle-status');
+    Route::delete('/{spotlightBrand}', [SpotlightBrandController::class, 'destroy'])->name('spotlight_brands.destroy');
 });
 
 Route::prefix('products')->group(function () {
