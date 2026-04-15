@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Admin\Size\SizeController;
 use App\Http\Controllers\Api\Admin\SubCategory\SubCategoryController;
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\YourController;
+use App\Http\Controllers\Api\Frontend\Address\AddressController as FrontendAddressController;
 use App\Http\Controllers\Api\Frontend\Collection\CollectionController as FrontendCollectionController;
 use App\Http\Controllers\Api\NewArrivalCategory\NewArrivalCategoryController as ApiNewArrivalCategoryController;
 use App\Http\Controllers\Api\Frontend\Recommendation\RecommendationController;
@@ -46,6 +47,7 @@ Route::prefix('new_arrival_categories')->group(function () {
 
 Route::get('/spotlight-brands', [ApiSpotlightBrandController::class, 'index']);
 Route::get('/recommended-for-you', [RecommendationController::class, 'index']);
+Route::get('/addresses', [FrontendAddressController::class, 'index']);
 
 /*
 |--------------------------------------------------------------------------
