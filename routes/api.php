@@ -47,7 +47,22 @@ Route::prefix('new_arrival_categories')->group(function () {
 
 Route::get('/spotlight-brands', [ApiSpotlightBrandController::class, 'index']);
 Route::get('/recommended-for-you', [RecommendationController::class, 'index']);
-Route::get('/addresses', [FrontendAddressController::class, 'index']);
+
+Route::prefix('addresses')->group(function () {
+    Route::get('/', [FrontendAddressController::class, 'index']);
+    Route::post('/', [FrontendAddressController::class, 'store']);
+    Route::patch('/selected-address', [FrontendAddressController::class, 'setSelectedAddress']);
+    Route::patch('/{id}', [FrontendAddressController::class, 'update']);
+    Route::delete('/{id}', [FrontendAddressController::class, 'destroy']);
+});
+
+Route::prefix('manage-address')->group(function () {
+    Route::get('/', [FrontendAddressController::class, 'index']);
+    Route::post('/', [FrontendAddressController::class, 'store']);
+    Route::patch('/selected-address', [FrontendAddressController::class, 'setSelectedAddress']);
+    Route::patch('/{id}', [FrontendAddressController::class, 'update']);
+    Route::delete('/{id}', [FrontendAddressController::class, 'destroy']);
+});
 
 /*
 |--------------------------------------------------------------------------
