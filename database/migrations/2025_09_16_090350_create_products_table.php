@@ -23,7 +23,7 @@ return new class extends Migration
             $table->text('color')->nullable();
             $table->text('collection')->nullable();
             $table->text('brand')->nullable();
-            $table->string('slug')->unique()->after('name');
+            $table->string('slug')->unique();
 
             $table->decimal('price', 10, 2);
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
