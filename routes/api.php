@@ -177,15 +177,13 @@ Route::get('/menu', [MenuController::class, 'index']);
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);
     Route::post('/', [ProductController::class, 'store']);
+    Route::get('/popular', [ProductController::class, 'popular']);
+    Route::get('/new-arrivals', [ProductController::class, 'newArrivals']);
+    Route::get('/most-viewed', [ProductController::class, 'mostViewed']);
     Route::get('/{id}', [ProductController::class, 'show']);
     Route::put('/{id}', [ProductController::class, 'update']);
     Route::delete('/{id}', [ProductController::class, 'destroy']);
 });
-
-// =================== Products CRUD (Admin) ===================
-Route::get('/products/popular', [ProductController::class, 'popular']);
-Route::get('/products/new-arrivals', [ProductController::class, 'newArrivals']);
-Route::get('/products/most-viewed', [ProductController::class, 'mostViewed']);
 
 // Collections/ =================== Products CRUD (Admin) ===================
 Route::prefix('collections')->group(function () {

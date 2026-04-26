@@ -19,6 +19,51 @@ use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
+    public function popular(Request $request)
+    {
+        $products = Product::with(['category', 'subCategory', 'sizes', 'images'])
+            ->where('is_popular', true)
+            ->orderBy('id', 'desc')
+            ->take(12)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Popular products fetched successfully',
+            'data' => ProductResource::collection($products)->toArray($request),
+        ]);
+    }
+
+    public function newArrivals(Request $request)
+    {
+        $products = Product::with(['category', 'subCategory', 'sizes', 'images'])
+            ->where('is_new', true)
+            ->orderBy('created_at', 'desc')
+            ->take(12)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New arrival products fetched successfully',
+            'data' => ProductResource::collection($products)->toArray($request),
+        ]);
+    }
+
+    public function mostViewed(Request $request)
+    {
+        $products = Product::with(['category', 'subCategory', 'sizes', 'images'])
+            ->orderBy('views', 'desc')
+            ->orderBy('id', 'desc')
+            ->take(12)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Most viewed products fetched successfully',
+            'data' => ProductResource::collection($products)->toArray($request),
+        ]);
+    }
+
     private function validateListingScope(Request $request): ?array
     {
         $rawKey = $request->query('key');
