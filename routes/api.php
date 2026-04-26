@@ -180,6 +180,7 @@ Route::prefix('products')->group(function () {
     Route::get('/popular', [ProductController::class, 'popular']);
     Route::get('/new-arrivals', [ProductController::class, 'newArrivals']);
     Route::get('/most-viewed', [ProductController::class, 'mostViewed']);
+    Route::get('/{slug}/similar', [FrontendProductController::class, 'similar']);
     Route::get('/{id}', [ProductController::class, 'show']);
     Route::put('/{id}', [ProductController::class, 'update']);
     Route::delete('/{id}', [ProductController::class, 'destroy']);
@@ -197,6 +198,7 @@ Route::prefix('frontend/products')->group(function () {
     Route::get('/popular', [FrontendProductController::class, 'popular']);
     Route::get('/new-arrivals', [FrontendProductController::class, 'newArrivals']);
     Route::get('/most-viewed', [FrontendProductController::class, 'mostViewed']);
+    Route::get('/{slug}/similar', [FrontendProductController::class, 'similar']);
 
     //  FILTER ROUTE
     Route::get('/', [FrontendProductController::class, 'getFilteredProducts']);

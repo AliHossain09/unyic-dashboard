@@ -64,6 +64,82 @@ class ProductController extends Controller
         ]);
     }
 
+    public function similar(Request $request, string $slug)
+    {
+        try {
+            $product = Product::query()
+                ->where('slug', $slug)
+                ->orWhere('id', $slug)
+                ->firstOrFail();
+
+            $hasSimilaritySignals = $product->sub_category_id
+                || $product->category_id
+                || ! empty($product->brand)
+                || ! empty($product->color);
+
+            $products = Product::with(['category', 'subCategory', 'sizes', 'images'])
+                ->where('id', '!=', $product->id);
+
+            if ($hasSimilaritySignals) {
+                $products->where(function ($query) use ($product) {
+                    if ($product->sub_category_id) {
+                        $query->orWhere('sub_category_id', $product->sub_category_id);
+                    }
+
+                    if ($product->category_id) {
+                        $query->orWhere('category_id', $product->category_id);
+                    }
+
+                    if (! empty($product->brand)) {
+                        $query->orWhere('brand', $product->brand);
+                    }
+
+                    if (! empty($product->color)) {
+                        $query->orWhere('color', $product->color);
+                    }
+                });
+            }
+
+            $products = $products
+                ->orderByRaw(
+                    'CASE
+                        WHEN sub_category_id <=> ? THEN 0
+                        WHEN category_id <=> ? THEN 1
+                        WHEN brand <=> ? THEN 2
+                        WHEN color <=> ? THEN 3
+                        ELSE 4
+                    END',
+                    [
+                        $product->sub_category_id,
+                        $product->category_id,
+                        $product->brand,
+                        $product->color,
+                    ]
+                )
+                ->orderByDesc('views')
+                ->orderByDesc('id')
+                ->take(12)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Similar products fetched successfully',
+                'data' => ProductResource::collection($products)->toArray($request),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Failed to fetch similar products', [
+                'slug' => $slug,
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch similar products',
+                'errors' => [],
+            ], 500);
+        }
+    }
+
     private function validateListingScope(Request $request): ?array
     {
         $rawKey = $request->query('key');
