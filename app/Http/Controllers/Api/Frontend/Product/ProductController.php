@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Api\Frontend\Product;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Models\ProductInteraction;
 use App\Models\Size;
 use App\Support\FrontendProductCache;
 use App\Support\GuestCookie;
 use App\Support\ProductInteractionTracker;
-use App\Support\ShoppingIdentity;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -60,6 +60,40 @@ class ProductController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Most viewed products fetched successfully',
+            'data' => ProductResource::collection($products)->toArray($request),
+        ]);
+    }
+
+    public function topPicks(Request $request)
+    {
+        $productIds = ProductInteraction::query()
+            ->selectRaw('product_id, SUM(score) as total_score')
+            ->where('interaction_type', ProductInteractionTracker::TYPE_VIEW)
+            ->groupBy('product_id')
+            ->orderByDesc('total_score')
+            ->limit(20)
+            ->pluck('product_id');
+
+        $products = collect();
+
+        if ($productIds->isNotEmpty()) {
+            $products = Product::with(['category', 'subCategory', 'sizes', 'images'])
+                ->whereIn('id', $productIds)
+                ->orderByRaw('FIELD(id, '.implode(',', $productIds->toArray()).')')
+                ->get();
+        }
+
+        if ($products->isEmpty()) {
+            $products = Product::with(['category', 'subCategory', 'sizes', 'images'])
+                ->orderBy('views', 'desc')
+                ->orderBy('id', 'desc')
+                ->take(20)
+                ->get();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Top picks fetched successfully',
             'data' => ProductResource::collection($products)->toArray($request),
         ]);
     }

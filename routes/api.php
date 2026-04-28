@@ -198,6 +198,7 @@ Route::prefix('frontend/products')->group(function () {
     Route::get('/popular', [FrontendProductController::class, 'popular']);
     Route::get('/new-arrivals', [FrontendProductController::class, 'newArrivals']);
     Route::get('/most-viewed', [FrontendProductController::class, 'mostViewed']);
+    Route::get('/top-picks', [FrontendProductController::class, 'topPicks']);
     Route::get('/{slug}/similar', [FrontendProductController::class, 'similar']);
 
     //  FILTER ROUTE
