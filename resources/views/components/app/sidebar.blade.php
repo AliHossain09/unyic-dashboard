@@ -225,15 +225,6 @@
                                     </a>
                                 </li>
 
-                                <li class="mb-1 last:mb-0">
-                                    <a href="{{ route('brands.index') }}"
-                                        class="block text-sm font-medium  dark:text-gray-400
-                                            hover:text-gray-700 dark:hover:text-gray-200 transition truncate
-                                            @if(request()->routeIs('brands.*')) text-violet-500 @endif">
-                                        Brands
-                                    </a>
-                                </li>
-
                                 <!-- Product Sub-Categories -->
                                 <li class="mb-1 last:mb-0">
                                     <a href="{{ route('subCategories.index') }}"

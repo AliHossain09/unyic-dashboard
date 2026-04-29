@@ -204,7 +204,7 @@ class ProductController extends Controller
             'category' => DB::table('categories')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
             'sub-category' => DB::table('sub_categories')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
             'collection' => DB::table('collections')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
-            'brand' => DB::table('brands')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
+            'brand' => DB::table('products')->whereRaw('LOWER(TRIM(brand)) = ?', [$keySlug])->exists(),
             default => false,
         };
 
@@ -297,12 +297,7 @@ class ProductController extends Controller
                 });
                 break;
             case 'brand':
-                $query->where(function ($query) use ($keySlug) {
-                    $query->whereRaw('LOWER(TRIM(brand)) = ?', [$keySlug])
-                        ->orWhereHas('brandRelation', function ($q) use ($keySlug) {
-                            $q->whereRaw('LOWER(slug) = ?', [$keySlug]);
-                        });
-                });
+                $query->whereRaw('LOWER(TRIM(brand)) = ?', [$keySlug]);
                 break;
         }
     }
