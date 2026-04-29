@@ -520,7 +520,9 @@ class ProductController extends Controller
         // Query params
         // --------------------------------------------------------------------------
         $selectedBrands = array_filter((array) $request->query('brand', []));
+        $selectedBrands = array_map(fn($b) => strtolower(trim($b)), $selectedBrands);
         $selectedColors = array_filter((array) $request->query('color', []));
+        $selectedColors = array_map(fn($c) => strtolower(trim($c)), $selectedColors);
         $selectedSizes = array_filter((array) $request->query('size', []));
         $discountId = (int) $request->query('discount_id');
         [$minPrice, $maxPrice] = array_map(
@@ -560,12 +562,12 @@ class ProductController extends Controller
 
         // Brand filter
         if ($selectedBrands) {
-            $query->whereIn('brand', $selectedBrands);
+            $query->whereIn(DB::raw('LOWER(TRIM(brand))'), $selectedBrands);
         }
 
         // Color filter
         if ($selectedColors) {
-            $query->whereIn('color', $selectedColors);
+            $query->whereIn(DB::raw('LOWER(TRIM(color))'), $selectedColors);
         }
 
         // Size filter
