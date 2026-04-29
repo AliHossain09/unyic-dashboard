@@ -278,29 +278,29 @@ class ProductController extends Controller
         switch ($key) {
             case 'department':
                 $query->whereHas('category.department', function ($q) use ($keySlug) {
-                    $q->where('slug', $keySlug);
+                    $q->whereRaw('LOWER(slug) = ?', [$keySlug]);
                 });
                 break;
             case 'category':
                 $query->whereHas('category', function ($q) use ($keySlug) {
-                    $q->where('slug', $keySlug);
+                    $q->whereRaw('LOWER(slug) = ?', [$keySlug]);
                 });
                 break;
             case 'sub-category':
                 $query->whereHas('subCategory', function ($q) use ($keySlug) {
-                    $q->where('slug', $keySlug);
+                    $q->whereRaw('LOWER(slug) = ?', [$keySlug]);
                 });
                 break;
             case 'collection':
                 $query->whereHas('collections', function ($q) use ($keySlug) {
-                    $q->where('slug', $keySlug);
+                    $q->whereRaw('LOWER(slug) = ?', [$keySlug]);
                 });
                 break;
             case 'brand':
                 $query->where(function ($query) use ($keySlug) {
                     $query->whereRaw('LOWER(TRIM(brand)) = ?', [$keySlug])
                         ->orWhereHas('brandRelation', function ($q) use ($keySlug) {
-                            $q->where('slug', $keySlug);
+                            $q->whereRaw('LOWER(slug) = ?', [$keySlug]);
                         });
                 });
                 break;
