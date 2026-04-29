@@ -21,6 +21,37 @@ class CategoryController extends Controller
     ], 200);
 }
 
+    public function latest()
+    {
+        try {
+            $categories = Category::orderBy('created_at', 'desc')
+                ->take(10)
+                ->get(['id', 'slug', 'name']);
+
+            $payload = $categories->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'slug' => $category->slug,
+                    'name' => $category->name,
+                    'image' => asset("images/categories/{$category->slug}.jpg"),
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Latest categories fetched successfully',
+                'data' => $payload,
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'status' => 500,
+                'message' => 'Failed to fetch latest categories',
+                'errors' => [$e->getMessage()],
+            ], 500);
+        }
+    }
+
     // ✅ Store (POST /api/categories)
     public function store(Request $request)
     {
