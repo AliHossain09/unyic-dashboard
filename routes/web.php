@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Admin\Cart\CartController;
 use App\Http\Controllers\Api\Admin\Wishlist\wishlistController;
 
 use App\Http\Controllers\View\Banner\BannerController;
+use App\Http\Controllers\View\Brand\BrandController;
 use App\Http\Controllers\View\NewArrivalCategory\NewArrivalCategoryController;
 use App\Http\Controllers\View\PopularCategory\PopularCategoryController;
 use App\Http\Controllers\View\SpotlightBrand\SpotlightBrandController;
@@ -295,6 +296,16 @@ Route::prefix('new_arrival_categories')->group(function () {
     Route::get('/{newArrivalCategory}/edit', [NewArrivalCategoryController::class, 'edit'])->name('new_arrival_categories.edit');
     Route::put('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'update'])->name('new_arrival_categories.update');
     Route::delete('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'destroy'])->name('new_arrival_categories.destroy');
+});
+
+Route::prefix('brands')->group(function () {
+    Route::get('/', [BrandController::class, 'index'])->name('brands.index');
+    Route::get('/create', [BrandController::class, 'create'])->name('brands.create');
+    Route::post('/', [BrandController::class, 'store'])->name('brands.store');
+    Route::get('/{brand}', [BrandController::class, 'show'])->name('brands.show');
+    Route::get('/{brand}/edit', [BrandController::class, 'edit'])->name('brands.edit');
+    Route::put('/{brand}', [BrandController::class, 'update'])->name('brands.update');
+    Route::delete('/{brand}', [BrandController::class, 'destroy'])->name('brands.destroy');
 });
 
 Route::prefix('spotlight_brands')->group(function () {
