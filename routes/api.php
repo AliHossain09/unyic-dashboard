@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\Banner\BannerController;
-use App\Http\Controllers\Api\Admin\Category\CategoryController;
+use App\Http\Controllers\Api\Category\CategoryController;
 use App\Http\Controllers\Api\Admin\Collection\CollectionController;
 use App\Http\Controllers\Api\Admin\Department\DepartmentController;
 use App\Http\Controllers\Api\Admin\MenuController\MenuController;
