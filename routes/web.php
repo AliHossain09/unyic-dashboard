@@ -20,7 +20,7 @@ use App\Http\Controllers\View\SubCategory\SubCategoryController;
 // use App\Http\Controllers\Api\Admin\Cart\CartController;
 // use App\Http\Controllers\Api\Admin\Wishlist\WishlistController;
 use App\Http\Controllers\Api\Admin\Cart\CartController;
-use App\Http\Controllers\Api\Admin\Wishlist\wishlistController;
+use App\Http\Controllers\Api\Admin\Wishlist\WishlistController;
 
 use App\Http\Controllers\View\Banner\BannerController;
 use App\Http\Controllers\View\NewArrivalCategory\NewArrivalCategoryController;
@@ -221,8 +221,8 @@ Route::prefix('departments')->group(function () {
     Route::get('/', [DepartmentController::class, 'index'])->name('departments.index'); // List department
     Route::get('/create', [DepartmentController::class, 'create'])->name('departments.create'); // Add department
     Route::post('/', [DepartmentController::class, 'store'])->name('departments.store'); // Store new department
-    Route::get('/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::get('/{department}/edit', [DepartmentController::class, 'edit'])->name('departments.edit');
+    Route::get('/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::put('/{department}', [DepartmentController::class, 'update'])->name('departments.update');
     Route::delete('/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
 });
@@ -231,8 +231,8 @@ Route::prefix('categories')->group(function () {
     Route::get('/', [CategoryController::class, 'index'])->name('categories.index'); // List category
     Route::get('/create', [CategoryController::class, 'create'])->name('categories.create'); // Add category
     Route::post('/', [CategoryController::class, 'store'])->name('categories.store'); // Store new category
-    Route::get('/{category}', [CategoryController::class, 'show'])->name('categories.show');
     Route::get('/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+    Route::get('/{category}', [CategoryController::class, 'show'])->name('categories.show');
     Route::put('/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
 });
@@ -241,8 +241,8 @@ Route::prefix('subCategories')->group(function () {
     Route::get('/', [SubCategoryController::class, 'index'])->name('subCategories.index'); // List subCategory
     Route::get('/create', [SubCategoryController::class, 'create'])->name('subCategories.create'); // Add subCategory
     Route::post('/', [SubCategoryController::class, 'store'])->name('subCategories.store'); // Store new subCategory
-    Route::get('/{sub-category}', [SubCategoryController::class, 'show'])->name('subCategories.show');
     Route::get('/{subCategory}/edit', [SubCategoryController::class, 'edit'])->name('subCategories.edit');
+    Route::get('/{sub-category}', [SubCategoryController::class, 'show'])->name('subCategories.show');
     Route::put('/{subCategory}', [SubCategoryController::class, 'update'])->name('subCategories.update');
     Route::delete('/{sub-category}', [SubCategoryController::class, 'destroy'])->name('subCategories.destroy');
 });
@@ -251,8 +251,8 @@ Route::prefix('sizes')->group(function () {
     Route::get('/', [SizeController::class, 'index'])->name('sizes.index'); // List sizes
     Route::get('/create', [SizeController::class, 'create'])->name('sizes.create'); // Add sizes
     Route::post('/', [SizeController::class, 'store'])->name('sizes.store'); // Store new sizes
-    Route::get('/{size}', [SizeController::class, 'show'])->name('sizes.show');
     Route::get('/{size}/edit', [SizeController::class, 'edit'])->name('sizes.edit');
+    Route::get('/{size}', [SizeController::class, 'show'])->name('sizes.show');
     Route::put('/{size}', [SizeController::class, 'update'])->name('sizes.update');
     Route::delete('/{size}', [SizeController::class, 'destroy'])->name('sizes.destroy');
 });
@@ -261,8 +261,8 @@ Route::prefix('collections')->group(function () {
     Route::get('/', [CollectionController::class, 'index'])->name('collections.index'); // List sizes
     Route::get('/create', [CollectionController::class, 'create'])->name('collections.create'); // Add sizes
     Route::post('/', [CollectionController::class, 'store'])->name('collections.store'); // Store new sizes
-    Route::get('/{collection}', [CollectionController::class, 'show'])->name('collections.show');
     Route::get('/{collection}/edit', [CollectionController::class, 'edit'])->name('collections.edit');
+    Route::get('/{collection}', [CollectionController::class, 'show'])->name('collections.show');
     Route::put('/{collection}', [CollectionController::class, 'update'])->name('collections.update');
     Route::delete('/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy');
 });
@@ -271,8 +271,8 @@ Route::prefix('banners')->group(function () {
     Route::get('/', [BannerController::class, 'index'])->name('banners.index'); // List sizes
     Route::get('/create', [BannerController::class, 'create'])->name('banners.create'); // Add sizes
     Route::post('/', [BannerController::class, 'store'])->name('banners.store'); // Store new sizes
-    Route::get('/{banner}', [BannerController::class, 'show'])->name('banners.show');
     Route::get('/{banner}/edit', [BannerController::class, 'edit'])->name('banners.edit');
+    Route::get('/{banner}', [BannerController::class, 'show'])->name('banners.show');
     Route::put('/{banner}', [BannerController::class, 'update'])->name('banners.update');
     Route::delete('/{banner}', [BannerController::class, 'destroy'])->name('banners.destroy');
 });
@@ -281,8 +281,8 @@ Route::prefix('popular_categories')->group(function () {
     Route::get('/', [PopularCategoryController::class, 'index'])->name('popular_categories.index'); // List sizes
     Route::get('/create', [PopularCategoryController::class, 'create'])->name('popular_categories.create'); // Add sizes
     Route::post('/', [PopularCategoryController::class, 'store'])->name('popular_categories.store'); // Store new sizes
-    Route::get('/{banner}', [PopularCategoryController::class, 'show'])->name('popular_categories.show');
     Route::get('/{banner}/edit', [PopularCategoryController::class, 'edit'])->name('popular_categories.edit');
+    Route::get('/{banner}', [PopularCategoryController::class, 'show'])->name('popular_categories.show');
     Route::put('/{banner}', [PopularCategoryController::class, 'update'])->name('popular_categories.update');
     Route::delete('/{banner}', [PopularCategoryController::class, 'destroy'])->name('popular_categories.destroy');
 });
@@ -291,8 +291,8 @@ Route::prefix('new_arrival_categories')->group(function () {
     Route::get('/', [NewArrivalCategoryController::class, 'index'])->name('new_arrival_categories.index');
     Route::get('/create', [NewArrivalCategoryController::class, 'create'])->name('new_arrival_categories.create');
     Route::post('/', [NewArrivalCategoryController::class, 'store'])->name('new_arrival_categories.store');
-    Route::get('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'show'])->name('new_arrival_categories.show');
     Route::get('/{newArrivalCategory}/edit', [NewArrivalCategoryController::class, 'edit'])->name('new_arrival_categories.edit');
+    Route::get('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'show'])->name('new_arrival_categories.show');
     Route::put('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'update'])->name('new_arrival_categories.update');
     Route::delete('/{newArrivalCategory}', [NewArrivalCategoryController::class, 'destroy'])->name('new_arrival_categories.destroy');
 });
@@ -301,10 +301,10 @@ Route::prefix('spotlight_brands')->group(function () {
     Route::get('/', [SpotlightBrandController::class, 'index'])->name('spotlight_brands.index');
     Route::get('/create', [SpotlightBrandController::class, 'create'])->name('spotlight_brands.create');
     Route::post('/', [SpotlightBrandController::class, 'store'])->name('spotlight_brands.store');
-    Route::get('/{spotlightBrand}', [SpotlightBrandController::class, 'show'])->name('spotlight_brands.show');
     Route::get('/{spotlightBrand}/edit', [SpotlightBrandController::class, 'edit'])->name('spotlight_brands.edit');
-    Route::put('/{spotlightBrand}', [SpotlightBrandController::class, 'update'])->name('spotlight_brands.update');
+    Route::get('/{spotlightBrand}', [SpotlightBrandController::class, 'show'])->name('spotlight_brands.show');
     Route::patch('/{spotlightBrand}/toggle-status', [SpotlightBrandController::class, 'toggleStatus'])->name('spotlight_brands.toggle-status');
+    Route::put('/{spotlightBrand}', [SpotlightBrandController::class, 'update'])->name('spotlight_brands.update');
     Route::delete('/{spotlightBrand}', [SpotlightBrandController::class, 'destroy'])->name('spotlight_brands.destroy');
 });
 
@@ -313,13 +313,11 @@ Route::prefix('products')->group(function () {
     Route::get('/create', [ProductController::class, 'create'])->name('products.create'); // Add product
     Route::post('/', [ProductController::class, 'store'])->name('products.store'); // Store new product
     Route::patch('/{product}/stock', [ProductController::class, 'updateStock'])->name('products.update-stock');
-    Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
+    Route::get('/export', [ProductController::class, 'export'])->name('products.export');
     Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
+    Route::get('/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::put('/{product}', [ProductController::class, 'update'])->name('products.update');
     Route::delete('/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
-     // web.php
-Route::get('products/export', [ProductController::class, 'export'])->name('products.export');
-
 });
 
 
