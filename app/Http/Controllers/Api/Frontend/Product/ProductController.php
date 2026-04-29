@@ -203,6 +203,7 @@ class ProductController extends Controller
             'department' => DB::table('departments')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
             'category' => DB::table('categories')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
             'sub-category' => DB::table('sub_categories')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
+            'collection' => DB::table('collections')->whereRaw('LOWER(slug) = ?', [$keySlug])->exists(),
             default => false,
         };
 
@@ -246,6 +247,7 @@ class ProductController extends Controller
             'department', 'departments' => 'department',
             'category', 'categories' => 'category',
             'sub-category', 'sub_category', 'subcategory', 'sub-categories' => 'sub-category',
+            'collection', 'collections' => 'collection',
             default => null,
         };
     }
@@ -284,6 +286,11 @@ class ProductController extends Controller
                 break;
             case 'sub-category':
                 $query->whereHas('subCategory', function ($q) use ($keySlug) {
+                    $q->where('slug', $keySlug);
+                });
+                break;
+            case 'collection':
+                $query->whereHas('collections', function ($q) use ($keySlug) {
                     $q->where('slug', $keySlug);
                 });
                 break;
