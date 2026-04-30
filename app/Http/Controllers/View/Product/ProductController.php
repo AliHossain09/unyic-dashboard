@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\View\Product;
 
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Collection;
 use App\Models\Product;
@@ -175,10 +176,11 @@ class ProductController extends Controller
         $subCategories = SubCategory::all();
         $sizes = Size::all();
         $collections = Collection::all(); // <-- send collections to view
+        $brands = Brand::orderBy('name')->get();
         $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
         $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
 
-        return view('admin.product.create', compact('categories', 'sizes', 'collections', 'subCategories', 'hasIsPublishedColumn', 'hasPublishAtColumn'));
+        return view('admin.product.create', compact('categories', 'sizes', 'collections', 'subCategories', 'brands', 'hasIsPublishedColumn', 'hasPublishAtColumn'));
     }
 
     public function store(Request $request)
@@ -195,7 +197,8 @@ class ProductController extends Controller
             'is_popular' => 'nullable',
             'is_new' => 'nullable',
             'old_price' => 'nullable',
-            'brand' => 'nullable|string|max:255',
+            'brand_id' => 'nullable|exists:brands,id',
+            'brand_name' => 'nullable|string|max:255',
             'collection' => 'nullable',
             'discount_percent' => 'nullable',
             'color' => 'nullable',
@@ -216,6 +219,27 @@ class ProductController extends Controller
         $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
         $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
 
+        $brandName = null;
+        $brandId = null;
+
+        if (! empty($validated['brand_id'])) {
+            $brand = Brand::find($validated['brand_id']);
+            if ($brand) {
+                $brandName = $brand->name;
+                $brandId = $brand->id;
+            }
+        } elseif (! empty($validated['brand_name'])) {
+            $brandName = trim($validated['brand_name']);
+            $brandSlug = Str::slug($brandName);
+            $brand = Brand::firstOrCreate([
+                'slug' => $brandSlug,
+            ], [
+                'name' => $brandName,
+            ]);
+            $brandId = $brand->id;
+            $brandName = $brand->name;
+        }
+
         $productData = [
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
@@ -232,8 +256,10 @@ class ProductController extends Controller
             'color' => $validated['color'] ?? null,
             'collection' => $validated['collection'] ?? null,
             'old_price' => $validated['old_price'] ?? null,
-            'brand' => $validated['brand'] ?? null,
+            'brand' => $brandName,
+            'brand_id' => $brandId,
             'discount_percent' => $validated['discount_percent'] ?? null,
+
             'slug' => $slug,
         ];
 
@@ -293,13 +319,14 @@ class ProductController extends Controller
         $categories = Category::with('subCategories')->get();
         $sizes = Size::all();
         $collections = Collection::all();
+        $brands = Brand::orderBy('name')->get();
         $hasIsPublishedColumn = Schema::hasColumn('products', 'is_published');
         $hasPublishAtColumn = Schema::hasColumn('products', 'publish_at');
 
         // load relations needed in the form (images, sizes, collections, subCategory)
         $product->load(['images', 'sizes', 'collections', 'subCategory']);
 
-        return view('admin.product.edit', compact('product', 'categories', 'sizes', 'collections', 'hasIsPublishedColumn', 'hasPublishAtColumn'));
+        return view('admin.product.edit', compact('product', 'categories', 'sizes', 'collections', 'brands', 'hasIsPublishedColumn', 'hasPublishAtColumn'));
     }
 
     // Update Product
@@ -317,7 +344,8 @@ class ProductController extends Controller
             'is_popular' => 'nullable',
             'is_new' => 'nullable',
             'old_price' => 'nullable',
-            'brand' => 'nullable|string|max:255',
+            'brand_id' => 'nullable|exists:brands,id',
+            'brand_name' => 'nullable|string|max:255',
             'collection' => 'nullable',
             'discount_percent' => 'nullable',
             'color' => 'nullable',
@@ -329,6 +357,28 @@ class ProductController extends Controller
             'status' => 'nullable|in:publish,scheduled,inactive',
             'publish_at' => 'nullable|date',
         ]);
+
+        // Update product fields
+        $brandName = null;
+        $brandId = null;
+
+        if (! empty($validated['brand_id'])) {
+            $brand = Brand::find($validated['brand_id']);
+            if ($brand) {
+                $brandName = $brand->name;
+                $brandId = $brand->id;
+            }
+        } elseif (! empty($validated['brand_name'])) {
+            $brandName = trim($validated['brand_name']);
+            $brandSlug = Str::slug($brandName);
+            $brand = Brand::firstOrCreate([
+                'slug' => $brandSlug,
+            ], [
+                'name' => $brandName,
+            ]);
+            $brandId = $brand->id;
+            $brandName = $brand->name;
+        }
 
         $updateData = [
             'name' => $validated['name'],
@@ -346,7 +396,8 @@ class ProductController extends Controller
             'color' => $validated['color'] ?? null,
             'collection' => $validated['collection'] ?? null,
             'old_price' => $validated['old_price'] ?? null,
-            'brand' => $validated['brand'] ?? null,
+            'brand' => $brandName,
+            'brand_id' => $brandId,
             'discount_percent' => $validated['discount_percent'] ?? null,
         ];
 

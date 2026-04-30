@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Brand;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    protected $fillable = ['name', 'description', 'price', 'category_id', 'slug', 'sub_category_id', 'old_price', 'discount_percent', 'is_popular', 'is_new', 'is_published', 'publish_at', 'is_in_stock', 'views', 'brand', 'collection', 'color', 'disclaimer', 'care_instructions', 'net_quantity', 'manufacture_date', 'country_of_origin'];
+    protected $fillable = ['name', 'description', 'price', 'category_id', 'slug', 'sub_category_id', 'old_price', 'discount_percent', 'is_popular', 'is_new', 'is_published', 'publish_at', 'is_in_stock', 'views', 'brand', 'brand_id', 'collection', 'color', 'disclaimer', 'care_instructions', 'net_quantity', 'manufacture_date', 'country_of_origin'];
 
     protected $casts = [
         'is_popular' => 'boolean',
@@ -52,5 +53,19 @@ class Product extends Model
         return $this->belongsToMany(Size::class, 'product_size')
                 ->withPivot('quantity')
                 ->withTimestamps();
+    }
+
+    public function brandRelation()
+    {
+        return $this->belongsTo(Brand::class, 'brand_id');
+    }
+
+    public function getBrandNameAttribute(): ?string
+    {
+        if ($this->brandRelation) {
+            return $this->brandRelation->name;
+        }
+
+        return $this->brand;
     }
 }

@@ -66,9 +66,18 @@
 
                 <!-- Brand -->
                 <div class="mb-4">
-                    <label for="brand" class="block font-medium">Brand</label>
-                    <input type="text" name="brand" id="brand" value="{{ old('brand', $product->brand) }}" class="form-input w-full">
-                    @error('brand')<span class="text-red-500 text-sm">{{ $message }}</span>@enderror
+                    <label for="brand_id" class="block font-medium">Brand</label>
+                    <select name="brand_id" id="brand_id" class="form-input w-full">
+                        <option value="">Select Brand</option>
+                        @foreach($brands as $brand)
+                            <option value="{{ $brand->id }}"
+                                @selected(old('brand_id', $product->brand_id) == $brand->id)>{{ $brand->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-sm text-gray-500 mt-1">Select existing brand or type a new one below.</p>
+                    <input type="text" name="brand_name" id="brand_name" value="{{ old('brand_name', $product->brand_name ?? $product->brand) }}" class="form-input w-full mt-2" placeholder="New brand name">
+                    @error('brand_id')<span class="text-red-500 text-sm">{{ $message }}</span>@enderror
+                    @error('brand_name')<span class="text-red-500 text-sm">{{ $message }}</span>@enderror
                 </div>
 
                 <!-- Collection -->

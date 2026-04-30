@@ -8,7 +8,6 @@ use App\Models\Product;
 use App\Models\Size;
 use App\Support\FrontendProductCache;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
@@ -18,74 +17,6 @@ class ProductController extends Controller
 
         // return response()->json($products);
         return ProductResource::collection($products);
-    }
-
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric',
-            'category_id' => 'required|exists:categories,id',
-            'sub_category_id' => 'required|exists:sub_categories,id',
-            'sizes' => 'nullable|array',
-            'collections' => 'nullable|array',
-            'collections.*' => 'exists:collections,id',
-            'is_popular' => 'nullable|boolean',
-            'is_new' => 'nullable|boolean',
-            'old_price' => 'nullable|numeric',
-            'brand' => 'nullable|string|max:255',
-            'collection' => 'nullable|string|max:255',
-            'discount_percent' => 'nullable|numeric',
-            'color' => 'nullable|string|max:255',
-            'disclaimer' => 'nullable|string',
-            'careInstructions' => 'nullable|string',
-            'countryOfOrigin' => 'nullable|string|max:255',
-            'manufactureDate' => 'nullable|date',
-            'netQuantity' => 'nullable|integer',
-        ]);
-
-        $slug = Str::slug($validated['name']);
-        $count = Product::where('slug', 'LIKE', "{$slug}%")->count();
-        $slug = $count ? "{$slug}-{$count}" : $slug;
-
-        $productData = [
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-            'price' => $validated['price'],
-            'category_id' => $validated['category_id'],
-            'sub_category_id' => $validated['sub_category_id'],
-            'is_popular' => $validated['is_popular'] ?? false,
-            'is_new' => $validated['is_new'] ?? false,
-            'old_price' => $validated['old_price'] ?? null,
-            'brand' => $validated['brand'] ?? null,
-            'collection' => $validated['collection'] ?? null,
-            'discount_percent' => $validated['discount_percent'] ?? null,
-            'color' => $validated['color'] ?? null,
-            'disclaimer' => $validated['disclaimer'] ?? null,
-            'care_instructions' => $validated['careInstructions'] ?? null,
-            'country_of_origin' => $validated['countryOfOrigin'] ?? null,
-            'manufacture_date' => $validated['manufactureDate'] ?? null,
-            'net_quantity' => $validated['netQuantity'] ?? null,
-            'slug' => $slug,
-        ];
-
-        $product = Product::create($productData);
-
-        if (! empty($validated['sizes'])) {
-            $product->sizes()->sync($validated['sizes']);
-        }
-
-        if (! empty($validated['collections'])) {
-            $product->collections()->sync($validated['collections']);
-        }
-
-        FrontendProductCache::bump();
-
-        return response()->json([
-            'message' => 'Product created successfully',
-            'data' => new ProductResource($product->fresh(['category', 'subCategory', 'sizes'])),
-        ], 201);
     }
 
     public function show($value)
@@ -139,57 +70,50 @@ class ProductController extends Controller
     {
         $product = Product::findOrFail($id);
 
-        $validated = $request->validate([
+        $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
             'sub_category_id' => 'required|exists:sub_categories,id',
-            'sizes' => 'nullable|array',
+            'sizes' => 'required|array', // size_id => quantity
             'collections' => 'nullable|array',
             'collections.*' => 'exists:collections,id',
-            'is_popular' => 'nullable|boolean',
-            'is_new' => 'nullable|boolean',
-            'old_price' => 'nullable|numeric',
-            'brand' => 'nullable|string|max:255',
-            'collection' => 'nullable|string|max:255',
-            'discount_percent' => 'nullable|numeric',
-            'color' => 'nullable|string|max:255',
-            'disclaimer' => 'nullable|string',
-            'careInstructions' => 'nullable|string',
-            'countryOfOrigin' => 'nullable|string|max:255',
-            'manufactureDate' => 'nullable|date',
-            'netQuantity' => 'nullable|integer',
+            'is_popular' => 'nullable',
+            'is_new' => 'nullable',
+            'old_price' => 'nullable',
+            'brand' => 'nullable',
+            'collection' => 'nullable',
+            'discount_percent' => 'nullable',
+            'color' => 'nullable',
+            'disclaimer' => 'nullable',
+            'careInstructions' => 'nullable',
+            'countryOfOrigin' => 'nullable',
+            'manufactureDate' => 'nullable',
+            'netQuantity' => 'nullable',
         ]);
 
         $product->update([
+            // 'name' => $request->name
             'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
+            'description' => $validated['description'],
             'price' => $validated['price'],
             'category_id' => $validated['category_id'],
             'sub_category_id' => $validated['sub_category_id'],
-            'is_popular' => $validated['is_popular'] ?? false,
-            'is_new' => $validated['is_new'] ?? false,
-            'net_quantity' => $validated['netQuantity'] ?? null,
-            'manufacture_date' => $validated['manufactureDate'] ?? null,
-            'country_of_origin' => $validated['countryOfOrigin'] ?? null,
-            'care_instructions' => $validated['careInstructions'] ?? null,
-            'disclaimer' => $validated['disclaimer'] ?? null,
-            'color' => $validated['color'] ?? null,
-            'collection' => $validated['collection'] ?? null,
-            'old_price' => $validated['old_price'] ?? null,
-            'brand' => $validated['brand'] ?? null,
-            'discount_percent' => $validated['discount_percent'] ?? null,
+            'is_popular' => isset($validated['is_popular']),
+            'is_new' => isset($validated['is_new']),
+            'net_quantity' => $validated['netQuantity'],
+            'manufacture_date' => $validated['manufactureDate'],
+            'country_of_origin' => $validated['countryOfOrigin'],
+            'care_instructions' => $validated['careInstructions'],
+            'disclaimer' => $validated['disclaimer'],
+            'color' => $validated['color'],
+            'collection' => $validated['collection'],
+            'old_price' => $validated['old_price'],
+            'brand' => $validated['brand'],
+            'discount_percent' => $validated['discount_percent'],
+
         ]);
-
-        if (! empty($validated['sizes'])) {
-            $product->sizes()->sync($validated['sizes']);
-        }
-
-        if (! empty($validated['collections'])) {
-            $product->collections()->sync($validated['collections']);
-        }
-
         FrontendProductCache::bump();
 
         return response()->json([
