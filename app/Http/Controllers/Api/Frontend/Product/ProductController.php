@@ -12,6 +12,7 @@ use App\Support\GuestCookie;
 use App\Support\ProductInteractionTracker;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +68,7 @@ class ProductController extends Controller
     public function topPicks(Request $request)
     {
         $productIds = ProductInteraction::query()
-            ->selectRaw('product_id, SUM(score) as total_score')
+            ->selectRaw('product_id, SUM(score) as total_score', [])
             ->where('interaction_type', ProductInteractionTracker::TYPE_VIEW)
             ->groupBy('product_id')
             ->orderByDesc('total_score')
@@ -307,6 +308,53 @@ class ProductController extends Controller
         }
     }
 
+    private function applySearchScope(Builder $query, Request $request): void
+    {
+        $search = trim((string) $request->query('search_query', ''));
+
+        if ($search === '') {
+            return;
+        }
+
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+                ->orWhereHas('category', function ($category) use ($search) {
+                    $category->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%");
+                })
+                ->orWhereHas('subCategory', function ($subCategory) use ($search) {
+                    $subCategory->where('name', 'like', "%{$search}%")
+                        ->orWhere('slug', 'like', "%{$search}%");
+                });
+        });
+    }
+
+    private function applyDiscountRange(Builder $query, array $range): void
+    {
+        $query->whereRaw('discount_percent BETWEEN ? AND ?', [
+            (int) $range[0],
+            (int) $range[1],
+        ]);
+    }
+
+    private function applyPriceRange(Builder $query, int $minPrice, int $maxPrice): void
+    {
+        $query->whereRaw('price BETWEEN ? AND ?', [$minPrice, $maxPrice]);
+    }
+
+    private function applyLowerInFilter(Builder $query, string $column, array $values): void
+    {
+        $values = array_values($values);
+
+        if ($values === []) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+
+        $query->whereRaw("LOWER(TRIM({$column})) IN ({$placeholders})", $values);
+    }
+
     private function discountRules(): array
     {
         return [
@@ -366,6 +414,7 @@ class ProductController extends Controller
             $selectedSizes
         ): Builder {
             $this->applyKeyScope($query, $request);
+            $this->applySearchScope($query, $request);
 
             $applyDiscount = $overrides['apply_discount'] ?? true;
             $applyPrice = $overrides['apply_price'] ?? true;
@@ -374,19 +423,19 @@ class ProductController extends Controller
             $sizes = $overrides['sizes'] ?? $selectedSizes;
 
             if ($applyDiscount && $activeDiscount) {
-                $query->whereBetween('discount_percent', $activeDiscount['range']);
+                $this->applyDiscountRange($query, $activeDiscount['range']);
             }
 
             if ($applyPrice && $hasPriceFilter) {
-                $query->whereBetween('price', [$minPrice, $maxPrice]);
+                $this->applyPriceRange($query, $minPrice, $maxPrice);
             }
 
             if ($brands) {
-                $query->whereIn(DB::raw('LOWER(TRIM(brand))'), $brands);
+                $this->applyLowerInFilter($query, 'brand', $brands);
             }
 
             if ($colors) {
-                $query->whereIn(DB::raw('LOWER(TRIM(color))'), $colors);
+                $this->applyLowerInFilter($query, 'color', $colors);
             }
 
             if ($sizes) {
@@ -404,7 +453,7 @@ class ProductController extends Controller
         $priceRangeQuery = Product::query();
         $applyFilters($priceRangeQuery, ['apply_price' => false]);
         $priceRangeForSlider = $priceRangeQuery
-            ->selectRaw('MIN(price) as min, MAX(price) as max')
+            ->selectRaw('MIN(price) as min, MAX(price) as max', [])
             ->first();
 
         // --------------------------------------------------------------------------
@@ -419,7 +468,7 @@ class ProductController extends Controller
             SUM(discount_percent BETWEEN 41 AND 60)  as d3,
             SUM(discount_percent BETWEEN 61 AND 80)  as d4,
             SUM(discount_percent BETWEEN 81 AND 100) as d5
-        ')
+        ', [])
             ->first();
 
         $discountFilters = collect($discountRules)->map(function ($rule, $id) use ($discountCounts) {
@@ -438,8 +487,8 @@ class ProductController extends Controller
         $brandQuery = Product::query();
         $applyFilters($brandQuery, ['brands' => []]);
         $brandFilters = $brandQuery
-            ->whereNotNull('brand')
-            ->selectRaw('LOWER(TRIM(brand)) as value, COUNT(*) as count')
+            ->whereNotNull('brand', 'and')
+            ->selectRaw('LOWER(TRIM(brand)) as value, COUNT(*) as count', [])
             ->groupBy('value')
             ->orderBy('value')
             ->get()
@@ -454,8 +503,8 @@ class ProductController extends Controller
         $colorQuery = Product::query();
         $applyFilters($colorQuery, ['colors' => []]);
         $colorFilters = $colorQuery
-            ->whereNotNull('color')
-            ->selectRaw('LOWER(TRIM(color)) as value, COUNT(*) as count')
+            ->whereNotNull('color', 'and')
+            ->selectRaw('LOWER(TRIM(color)) as value, COUNT(*) as count', [])
             ->groupBy('value')
             ->orderBy('value')
             ->get()
@@ -474,7 +523,7 @@ class ProductController extends Controller
             ->map(function ($size) use ($sizeBaseQuery) {
                 $count = $size->products()
                     ->mergeConstraintsFrom(clone $sizeBaseQuery)
-                    ->count();
+                    ->count('*');
 
                 return [
                     'label' => ucfirst($size->name),
@@ -489,7 +538,7 @@ class ProductController extends Controller
         // --------------------------------------------------------------------------
         $filteredTotalQuery = Product::query();
         $applyFilters($filteredTotalQuery);
-        $filteredTotal = $filteredTotalQuery->count();
+        $filteredTotal = $filteredTotalQuery->count('*');
 
         // --------------------------------------------------------------------------
         // Response
@@ -559,25 +608,26 @@ class ProductController extends Controller
         // --------------------------------------------------------------------------
         $query = Product::query();
         $this->applyKeyScope($query, $request);
+        $this->applySearchScope($query, $request);
 
         // Discount filter
         if ($activeDiscount) {
-            $query->whereBetween('discount_percent', $activeDiscount['range']);
+            $this->applyDiscountRange($query, $activeDiscount['range']);
         }
 
         // Price filter
         if ($request->filled('price')) {
-            $query->whereBetween('price', [$minPrice, $maxPrice]);
+            $this->applyPriceRange($query, $minPrice, $maxPrice);
         }
 
         // Brand filter
         if ($selectedBrands) {
-            $query->whereIn(DB::raw('LOWER(TRIM(brand))'), $selectedBrands);
+            $this->applyLowerInFilter($query, 'brand', $selectedBrands);
         }
 
         // Color filter
         if ($selectedColors) {
-            $query->whereIn(DB::raw('LOWER(TRIM(color))'), $selectedColors);
+            $this->applyLowerInFilter($query, 'color', $selectedColors);
         }
 
         // Size filter
@@ -589,7 +639,7 @@ class ProductController extends Controller
 
         // Keep total here for backward compatibility with existing frontend consumers.
         $includeTotal = $request->boolean('include_total', true);
-        $total = $includeTotal ? (clone $query)->count() : null;
+        $total = $includeTotal ? (clone $query)->count('*') : null;
 
         // --------------------------------------------------------------------------
         // Sorting
@@ -677,7 +727,7 @@ class ProductController extends Controller
         // ]);
     }
 
-    public function show(Request $request, $value)
+    public function show(Request $request, string $value): JsonResponse
     {
         $product = Product::with(['category', 'subCategory', 'sizes', 'images'])
             ->where(function ($query) use ($value) {
@@ -686,7 +736,8 @@ class ProductController extends Controller
             })
             ->firstOrFail();
 
-        $product->increment('views');
+        $product->views = (int) $product->views + 1;
+        $product->save();
         $identity = ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_VIEW);
 
         return $this->withGuestCookie($identity, response()->json([
@@ -696,9 +747,10 @@ class ProductController extends Controller
         ]));
     }
 
-    public function trackView(Request $request, Product $product)
+    public function trackView(Request $request, Product $product): JsonResponse
     {
-        $product->increment('views');
+        $product->views = (int) $product->views + 1;
+        $product->save();
         $identity = ProductInteractionTracker::record($request, $product->id, ProductInteractionTracker::TYPE_VIEW);
 
         return $this->withGuestCookie($identity, response()->json([
@@ -707,7 +759,7 @@ class ProductController extends Controller
         ]));
     }
 
-    protected function withGuestCookie(array $identity, $response)
+    protected function withGuestCookie(array $identity, JsonResponse $response): JsonResponse
     {
         if ($identity['type'] === 'guest' && $identity['guest_token']) {
             $response->cookie(GuestCookie::make($identity['guest_token']));

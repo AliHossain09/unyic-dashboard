@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api\Category;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Category;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
     // Show all categories
- public function index()
+ public function index(): JsonResponse
 {
     $categories = Category::all(); // without paginate()
     // $categories = Category::paginate(10);
@@ -21,7 +22,7 @@ class CategoryController extends Controller
     ], 200);
 }
 
-    public function latest()
+    public function latest(): JsonResponse
     {
         try {
             $categories = Category::orderBy('created_at', 'desc')
@@ -53,7 +54,7 @@ class CategoryController extends Controller
     }
 
     // ✅ Store (POST /api/categories)
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -68,9 +69,9 @@ class CategoryController extends Controller
     }
 
     // ✅ Edit / Show single (GET /api/categories/{id})
-    public function show($id)
+    public function show(int|string $id): JsonResponse
     {
-        $category = Category::find($id);
+        $category = Category::find($id, ['*']);
 
         if (!$category) {
             return response()->json(['message' => 'Category not found'], 404);
@@ -82,9 +83,9 @@ class CategoryController extends Controller
     }
 
     // ✅ Update (PUT /api/categories/{id})
-    public function update(Request $request, $id)
+    public function update(Request $request, int|string $id): JsonResponse
     {
-        $category = Category::find($id);
+        $category = Category::find($id, ['*']);
 
         if (!$category) {
             return response()->json(['message' => 'Category not found'], 404);
@@ -103,9 +104,9 @@ class CategoryController extends Controller
     }
 
     // ✅ Delete (DELETE /api/categories/{id})
-    public function destroy($id)
+    public function destroy(int|string $id): JsonResponse
     {
-        $category = Category::find($id);
+        $category = Category::find($id, ['*']);
 
         if (!$category) {
             return response()->json(['message' => 'Category not found'], 404);
