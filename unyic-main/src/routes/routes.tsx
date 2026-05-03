@@ -18,6 +18,7 @@ import Addresses from "../pages/my-account/Addresses";
 import ProfileDetails from "../pages/my-account/ProfileDetails";
 import ChangePassword from "../pages/my-account/ChangePassword";
 import Search from "../pages/Search";
+import ResetPassword from "../pages/ResetPassword";
 // import Blog from "../pages/Blog";
 
 const router = createBrowserRouter([
@@ -132,6 +133,10 @@ const router = createBrowserRouter([
           {
             path: "login",
             Component: Login,
+          },
+          {
+            path: "reset-password",
+            Component: ResetPassword,
           },
         ],
       },

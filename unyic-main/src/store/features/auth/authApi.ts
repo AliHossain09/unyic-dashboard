@@ -18,6 +18,18 @@ interface LoginCredentials {
 interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+  confirmPassword: string;
+}
+
+interface ForgotPasswordPayload {
+  email: string;
+}
+
+interface ResetPasswordPayload {
+  token: string;
+  email: string;
+  password: string;
+  passwordConfirmation: string;
 }
 
 export const authApi = createApi({
@@ -113,7 +125,32 @@ export const authApi = createApi({
       query: (body) => ({
         url: "user/change-password",
         method: "POST",
+        body: {
+          current_password: body.currentPassword,
+          password: body.newPassword,
+          password_confirmation: body.confirmPassword,
+        },
+      }),
+    }),
+
+    forgotPassword: builder.mutation<void, ForgotPasswordPayload>({
+      query: (body) => ({
+        url: "forgot-password",
+        method: "POST",
         body,
+      }),
+    }),
+
+    resetPassword: builder.mutation<void, ResetPasswordPayload>({
+      query: (body) => ({
+        url: "reset-password",
+        method: "POST",
+        body: {
+          token: body.token,
+          email: body.email,
+          password: body.password,
+          password_confirmation: body.passwordConfirmation,
+        },
       }),
     }),
   }),
@@ -124,4 +161,6 @@ export const {
   useLoginMutation,
   useLogoutMutation,
   useChangePasswordMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;

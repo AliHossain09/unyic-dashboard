@@ -114,38 +114,23 @@ Route::middleware(['auth:sanctum', 'role:user'])->get('/user-dashboard', functio
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 Route::post('/check-email', [YourController::class, 'checkEmail']);
 
 // Protected routes (any authenticated user)
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/user/change-password', [AuthController::class, 'changePassword']);
+    Route::get('/user/details', [AuthController::class, 'userDetails']);
+    Route::patch('/user/details', [AuthController::class, 'updateUserDetails']);
 
     // Route::get('/user', function (Request $request) {
     //     return $request->user();
     // });
 
     Route::get('/json-data-feed', [DataFeedController::class, 'getDataFeed']);
-});
-
-Route::middleware('auth:sanctum')->get('/user/details', function (Request $request) {
-    if (! $request->user()) {
-        return response()->json([
-            'success' => false,
-            'status' => 401,
-            'message' => 'Unauthenticated. Please login first.',
-        ], 401);
-    }
-
-    return response()->json([
-        'success' => true,
-        'data' => [
-            'id' => $request->user()->id,
-            'name' => $request->user()->name,
-            'email' => $request->user()->email,
-            'role' => $request->user()->role ?? null,
-        ],
-    ]);
 });
 
 Route::prefix('departments')->group(function () {

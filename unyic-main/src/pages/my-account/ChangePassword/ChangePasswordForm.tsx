@@ -28,6 +28,7 @@ const ChangePasswordForm = () => {
       await changePassword({
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
       }).unwrap();
 
       reset();

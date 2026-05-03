@@ -35,7 +35,11 @@ const ProfileDetailsForm = () => {
 
       toast.success("Updated successfully!");
     } catch (error) {
-      toast.error("Failded to update");
+      const message =
+        (error as { data?: { message?: string } })?.data?.message ||
+        "Failed to update";
+
+      toast.error(message);
       console.error("Failed to update profile details :", error);
     }
   };
