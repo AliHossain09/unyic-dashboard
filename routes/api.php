@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\NewArrivalCategory\NewArrivalCategoryController as 
 use App\Http\Controllers\Api\Frontend\Recommendation\RecommendationController;
 use App\Http\Controllers\Api\SpotlightBrand\SpotlightBrandController as ApiSpotlightBrandController;
 use App\Http\Controllers\Api\Frontend\Cart\CartController as FrontCartController;
+use App\Http\Controllers\Api\Frontend\Order\OrderController as FrontOrderController;
 use App\Http\Controllers\Api\Frontend\Product\ProductController as FrontendProductController;
 
 use App\Http\Controllers\Api\Frontend\Wishlist\WishlistController as FrontWishlistController;
@@ -100,6 +101,14 @@ Route::middleware(['auth:sanctum', 'role:user'])->get('/user-dashboard', functio
     Route::post('/wishlist', [FrontWishlistController::class, 'store']);
     Route::delete('/wishlist/{productId?}', [FrontWishlistController::class, 'destroy']);
     // Route::delete('/wishlist/{id}', [FrontWishlistController::class, 'destroy']);
+
+    // Orders / SSLCommerz checkout
+    Route::post('/orders/checkout', [FrontOrderController::class, 'checkout']);
+    Route::get('/orders/{orderNumber}', [FrontOrderController::class, 'show']);
+    Route::match(['get', 'post'], '/payments/sslcommerz/success', [FrontOrderController::class, 'success']);
+    Route::match(['get', 'post'], '/payments/sslcommerz/fail', [FrontOrderController::class, 'fail']);
+    Route::match(['get', 'post'], '/payments/sslcommerz/cancel', [FrontOrderController::class, 'cancel']);
+    Route::post('/payments/sslcommerz/ipn', [FrontOrderController::class, 'ipn']);
 
 
 // Public routes

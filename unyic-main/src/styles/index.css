@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+:root {
+  --main-nav-h: 122px;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --main-nav-h: 64px;
+  }
+}
+
+@theme {
+  --font-lato: Lato, sans-serif;
+
+  --color-primary: #bf7154;
+  --color-primary-dark: #bb4125;
+  --color-primary-light: #e8c1a8;
+
+  --color-warning: #ff9800;
+  --color-success: #4caf50;
+
+  --color-light: #f9f6f6;
+  --color-light-dark: #eeecea;
+
+  --color-dark: #212121;
+  --color-dark-light: #717171;
+
+  --transition-property-height: height;
+  --transition-property-spacing: margin, padding;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-300, currentColor);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: default;
+  }
+}
+
+.form-input {
+  @apply w-full px-4 py-2 border rounded focus:border-primary focus:shadow outline-none bg-inherit;
+}
+
+@utility ui-container {
+  @apply max-w-480 mx-auto px-3 lg:px-6 xl:px-[6%];
+}
+
+@utility mt-responsive {
+  @apply mt-14 md:mt-16 lg:mt-18;
+}
+
+@utility mb-responsive {
+  @apply mb-14 md:mb-16 lg:mb-18;
+}
+
+@utility product-image-ratio {
+  @apply aspect-34/45;
+}
+
+@utility products-page-grid {
+  @apply pt-4 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-x-2 sm:gap-x-4 gap-y-8;
+}
+
+.hide-scrollable {
+  overflow: scroll; /* Enable scrolling for this element */
+  height: 100%; /* Adjust as needed */
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.hide-scrollable::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, and Opera */
+}
+
+/* Chrome, Safari, Edge, Opera */
+.hide-number-spinner::-webkit-outer-spin-button,
+.hide-number-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.hide-number-spinner[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.rangeSlider {
+  grid-row: 1;
+  grid-column: 1;
+  pointer-events: none;
+  appearance: none;
+  @apply absolute w-full top-0 left-0;
+}
+
+.rangeSlider::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  @apply size-5 rounded-full bg-primary cursor-pointer;
+}
+
+.rangeSlider:active::-webkit-slider-thumb {
+  @apply scale-120;
+}
